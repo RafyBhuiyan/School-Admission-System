@@ -1,6 +1,6 @@
 # AI usage
 
-I used OpenAI Codex for scaffolding, EF mappings and migrations, foundation/schema tests, and documentation drafts. I supplied the revised plan and worked through it one step at a time.
+I used OpenAI Codex for scaffolding, EF mappings and migrations, class endpoints, backend tests, and documentation drafts. I supplied the revised plan and worked through it one step at a time.
 
 During the initial plan review, I corrected three suggestions:
 
@@ -10,4 +10,4 @@ During the initial plan review, I corrected three suggestions:
 
 There were concrete implementation corrections too. Adding EF's design package exposed a relational-package version conflict; the packages were aligned at 10.0.8. A generated schema test expected foreign-key SQLSTATE `23503` for restricted deletion, but PostgreSQL 18 returned `23001`; the expectation was corrected.
 
-At step 3, Codex ran the Release build and tests against a temporary PostgreSQL 18 container: 32 passed, none failed or skipped. Migration rollback/reapply and the model snapshot check also passed. Those checks cover foundations and schema, not concurrent admission allocation. The hold services and UI decisions above are still planned. Detailed command results are in [PROGRESS.md](docs/PROGRESS.md).
+At step 5, Codex ran the Release build and tests against a temporary PostgreSQL 18 container: 55 passed, none failed or skipped. This includes 23 class API cases; eight simultaneous creates with the same name produced one 201 and seven 409s. The existing schema cases also rechecked migration rollback/reapply. This does not prove concurrent seat allocation. The hold services and UI decisions above are still planned. Detailed command results are in [PROGRESS.md](docs/PROGRESS.md).

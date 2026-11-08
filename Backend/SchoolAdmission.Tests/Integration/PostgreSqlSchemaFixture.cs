@@ -45,8 +45,11 @@ public sealed class PostgreSqlSchemaFixture : IAsyncLifetime
         }
     }
 
+    public string ConnectionString => testConnectionString
+        ?? throw new InvalidOperationException("Schema test database is not configured.");
+
     public AppDbContext CreateContext() => new(new DbContextOptionsBuilder<AppDbContext>()
-        .UseNpgsql(testConnectionString ?? throw new InvalidOperationException("Schema test database is not configured."))
+        .UseNpgsql(ConnectionString)
         .Options);
 
     public async Task DisposeAsync()

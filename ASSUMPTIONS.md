@@ -1,6 +1,6 @@
 # Assumptions
 
-These are my decisions for the revised plan. The schema is in place; the admission endpoints and browser workflows are still to be implemented.
+These are my decisions for the revised plan. The schema and class endpoints are in place; hold/payment endpoints and browser workflows are still to be implemented.
 
 - I treat each grade/shift as a separate class. I chose UUIDs rather than the sample `c_123`/`h_789` prefixes. Class names are case-sensitive, limited to 200 characters, and trimmed before validation; duplicates return 409.
 - I kept the 17-digit check in React. The API will accept a trimmed, non-empty `X-Student-Id` up to 64 characters, including synthetic IDs such as `student-1`. I store it as `VARCHAR(64)` to preserve leading zeros and case.
