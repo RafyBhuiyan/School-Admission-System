@@ -1,6 +1,6 @@
 # Implementation progress
 
-Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–3; step 4 has not started.
+Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–4; step 5 has not started.
 
 ## Step 1 — Repository and solution structure
 
@@ -90,6 +90,23 @@ The schema tests created and removed uniquely named databases in a temporary loc
 
 No admission endpoints, lifecycle services, or concurrency-safe allocation have been implemented at step 3. The frontend is unchanged. Step 2 commit `b735ee2` was present when work began; step 3 changes are left for review/commit, with no commit or push attempted.
 
+## Step 4 — Initial assumptions
+
+- [x] Record UUID formats, class/shift representation, and backend/UI student-ID validation differences.
+- [x] Record per-class duplicate rules, cross-class applications, terminal states, history retention, and reapplication.
+- [x] Record simulated payment and idempotent confirmation/cancellation responses.
+- [x] Record database-clock expiry, the exact expiry boundary, overdue commit-before-409 behavior, automatic expiration, and capacity/ordering assumptions.
+- [x] Record 403 ownership responses, public hold retrieval, and demo identity/admin security limitations.
+- [x] Record localStorage continuity, automatic `/me/holds` retrieval, Forget/Change Student actions, and the privacy trade-off.
+- [x] Record countdown/polling authority and existing schema, architecture, configuration, migration, and test-isolation decisions.
+- [x] Add a reason for each decision and distinguish the implemented foundation/schema from upcoming workflows.
+
+## Step 4 verification
+
+Reviewed on 9 November 2026 (Asia/Dhaka) against the revised plan's sections 4–9, 13–14, and section 16 step 4, plus the current entity mappings, configuration, and application setup. All requested assumption topics are documented in `ASSUMPTIONS.md`. The whitespace/diff check passed. This documentation-only step required no new builds or test execution; the 32 passing cases above remain the step 3 verification result.
+
+Step 3 commit `4743375` was present when work began. Step 4 documentation changes are left for review/commit; no commit or push was attempted.
+
 ## Next planned step
 
-Step 4: record the complete initial business assumptions, including ID formats and validation, duplicate/terminal-state behavior, database expiry semantics, ownership responses, simulated payment, browser continuity, and demo security limitations.
+Step 5: implement `POST /classes`, `GET /classes`, and `GET /classes/{classId}`, with validation, appropriate errors, and the required seat-summary fields.

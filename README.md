@@ -4,7 +4,7 @@ A school admission application for parents and administrators, built in the orde
 
 ## Current status
 
-Steps 1–3 are implemented locally: application foundations, the two database entities, relationships/constraints, required indexes, and the first EF Core migration. The backend builds and all 32 foundation/schema test cases pass, including 11 checks against real PostgreSQL. Admission endpoints and parent/admin workflows are not implemented yet. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
+Steps 1–4 are complete locally: application foundations, the two database entities, relationships/constraints, required indexes, the first EF Core migration, and the initial [business/technical assumptions](ASSUMPTIONS.md). The last code verification at step 3 passed all 32 foundation/schema test cases, including 11 checks against real PostgreSQL. Step 4 changes documentation only. Admission endpoints and parent/admin workflows are not implemented yet. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
 
 ## Technology
 
