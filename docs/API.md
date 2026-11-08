@@ -43,7 +43,7 @@ Both endpoints use the same summary query. Each item contains exactly these fiel
 | `confirmedSeats` | `CONFIRMED` rows, regardless of their historical expiry |
 | `availableSeats` | Total minus active holds and confirmed admissions, with a defensive floor of zero |
 
-The query captures database wall-clock time once per statement and calculates both counts in that statement. Overdue `HELD`, `EXPIRED`, and `CANCELLED` rows do not occupy seats. Reads do not mutate application status. Capacity-safe hold creation is scheduled for step 7; the availability floor does not enforce that invariant.
+EF Core translates the shared LINQ query into one SQL statement. The only handwritten SQL is `SELECT clock_timestamp() AS "Value"`, composed into that statement to capture database wall-clock time once. Overdue `HELD`, `EXPIRED`, and `CANCELLED` rows do not occupy seats. Reads do not mutate application status. Capacity-safe hold creation is scheduled for step 7; the availability floor does not enforce that invariant.
 
 ## Errors
 

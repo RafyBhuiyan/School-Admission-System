@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SchoolAdmission.Api.Data;
 using SchoolAdmission.Api.DTOs.Responses;
+using SchoolAdmission.Api.Enums;
 using SchoolAdmission.Api.Models.Entities;
 
 namespace SchoolAdmission.Api.Services;
@@ -28,28 +29,30 @@ public sealed class ClassService(AppDbContext dbContext)
     }
 
     public Task<List<ClassSummaryResponse>> GetAllAsync(CancellationToken cancellationToken) =>
-        SeatSummaries().OrderBy(summary => summary.Name).ThenBy(summary => summary.Id).ToListAsync(cancellationToken);
+        SeatSummaries(dbContext.AdmissionClasses).ToListAsync(cancellationToken);
 
     public Task<ClassSummaryResponse?> GetByIdAsync(Guid classId, CancellationToken cancellationToken) =>
-        SeatSummaries().SingleOrDefaultAsync(summary => summary.Id == classId, cancellationToken);
+        SeatSummaries(dbContext.AdmissionClasses.Where(admissionClass => admissionClass.Id == classId))
+            .SingleOrDefaultAsync(cancellationToken);
 
-    private IQueryable<ClassSummaryResponse> SeatSummaries() => dbContext.Database.SqlQuery<ClassSummaryResponse>($"""
-        WITH database_time AS MATERIALIZED (SELECT clock_timestamp() AS value)
-        SELECT
-            admission_class.id AS "Id",
-            admission_class.name AS "Name",
-            admission_class.total_seats AS "TotalSeats",
-            occupied.held::integer AS "HeldSeats",
-            occupied.confirmed::integer AS "ConfirmedSeats",
-            GREATEST(0, admission_class.total_seats - occupied.held - occupied.confirmed)::integer AS "AvailableSeats"
-        FROM "AdmissionClasses" AS admission_class
-        CROSS JOIN database_time AS db_time
-        CROSS JOIN LATERAL (
-            SELECT
-                COUNT(*) FILTER (WHERE hold.status = 'HELD' AND hold.expires_at > db_time.value) AS held,
-                COUNT(*) FILTER (WHERE hold.status = 'CONFIRMED') AS confirmed
-            FROM "AdmissionHolds" AS hold
-            WHERE hold.class_id = admission_class.id
-        ) AS occupied
-        """);
+    private IQueryable<ClassSummaryResponse> SeatSummaries(IQueryable<AdmissionClass> classes)
+    {
+        // Keep PostgreSQL's wall clock in the same query; EF translates the rest from LINQ.
+        var databaseTime = dbContext.Database.SqlQuery<DateTime>($"SELECT clock_timestamp() AS \"Value\"");
+
+        return from now in databaseTime
+               from admissionClass in classes
+               let held = admissionClass.Holds.Count(hold =>
+                   hold.Status == AdmissionHoldStatus.HELD && hold.ExpiresAt > now)
+               let confirmed = admissionClass.Holds.Count(hold =>
+                   hold.Status == AdmissionHoldStatus.CONFIRMED)
+               orderby admissionClass.Name, admissionClass.Id
+               select new ClassSummaryResponse(
+                   admissionClass.Id,
+                   admissionClass.Name,
+                   admissionClass.TotalSeats,
+                   held,
+                   confirmed,
+                   Math.Max(0, admissionClass.TotalSeats - held - confirmed));
+    }
 }

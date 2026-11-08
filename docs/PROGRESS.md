@@ -138,7 +138,9 @@ Verified on 9 November 2026 (Asia/Dhaka):
 
 The tests used fixture-owned databases in a temporary PostgreSQL container. Results were saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step5-classes.trx`. The existing CI PostgreSQL setup runs the added tests without new secrets; no hosted CI run was performed here.
 
-Step 4 commit `7b0b953` was present at the start. Step 5 changes are left for review/commit; no commit or push was attempted. The frontend and hold lifecycle endpoints remain unchanged. The duplicate-class-name race does not verify capacity-safe seat allocation; that implementation is scheduled for step 7 and its concurrency suite for steps 13–15.
+Step 4 commit `7b0b953` was present at the start. On resuming step 5, the class APIs were already committed as `671d962`. After the ORM review, the handwritten seat-summary CTE/lateral query was replaced with EF Core LINQ. Only the scalar `clock_timestamp()` expression remains handwritten, composed into the same database statement. Filtering and ordering precede the response record projection so EF can translate them. Test logs confirm database-side counts, filtering, ordering, and availability calculation.
+
+The Release build and all 55 PostgreSQL tests passed again after the refactor. The temporary test container and its volume were removed. The refactor and these documentation updates are left for review/commit; no commit or push was attempted. The frontend and hold lifecycle endpoints remain unchanged. The duplicate-class-name race does not verify capacity-safe seat allocation; that implementation is scheduled for step 7 and its concurrency suite for steps 13–15.
 
 ## Next planned step
 

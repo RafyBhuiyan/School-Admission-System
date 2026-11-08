@@ -10,4 +10,6 @@ During the initial plan review, I corrected three suggestions:
 
 There were concrete implementation corrections too. Adding EF's design package exposed a relational-package version conflict; the packages were aligned at 10.0.8. A generated schema test expected foreign-key SQLSTATE `23503` for restricted deletion, but PostgreSQL 18 returned `23001`; the expectation was corrected.
 
+I also questioned the handwritten seat-summary SQL. It was replaced with EF Core LINQ, keeping only the PostgreSQL clock expression. The first refactor failed six API tests because EF could not translate filtering/ordering after the record constructor; moving those operations before the response projection fixed it.
+
 At step 5, Codex ran the Release build and tests against a temporary PostgreSQL 18 container: 55 passed, none failed or skipped. This includes 23 class API cases; eight simultaneous creates with the same name produced one 201 and seven 409s. The existing schema cases also rechecked migration rollback/reapply. This does not prove concurrent seat allocation. The hold services and UI decisions above are still planned. Detailed command results are in [PROGRESS.md](docs/PROGRESS.md).
