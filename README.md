@@ -90,3 +90,9 @@ npm run lint
 The test project is an empty scaffold: test discovery is not evidence that admission behavior works. Meaningful PostgreSQL integration and concurrency tests are scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 See [ASSUMPTIONS.md](ASSUMPTIONS.md) for implementation decisions and [AI_USAGE.md](AI_USAGE.md) for assistance disclosure.
+
+## Continuous integration
+
+GitHub Actions runs backend restore/build/test discovery and frontend install/lint/build
+checks on pushes and pull requests. See [docs/CI.md](docs/CI.md) for GitHub Desktop
+setup steps, required merge checks, current test limitations, and when to add deployment.
