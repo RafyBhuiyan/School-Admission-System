@@ -1,6 +1,6 @@
 # Implementation progress
 
-Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–6; step 7 has not started.
+Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–7; step 8 has not started.
 
 ## Step 1 — Repository and solution structure
 
@@ -170,6 +170,41 @@ The three exact-boundary cases use a test-only command interceptor to replace ju
 
 The production LINQ query passed unchanged; no migration or dependency changes were needed. Tests used fixture-owned databases in a disposable PostgreSQL 18 container, which was removed with its volume after verification. Results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step6-summaries.trx`. The existing CI command discovers the new cases automatically; no hosted CI run was performed. Changes are left for review/commit; no commit or push was attempted.
 
+## Step 7 — Concurrency-safe hold creation
+
+- [x] Implement `POST /classes/{classId}/holds` and its exact five-field 201 response.
+- [x] Validate one trimmed, non-empty student header up to 64 characters; accept synthetic IDs and preserve case/leading zeros.
+- [x] Validate optional JSON bodies and the positive `HOLD_DURATION_SECONDS` setting (default 600).
+- [x] Begin a read-committed transaction, lock the class row with parameterized `FOR UPDATE`, then capture `clock_timestamp()`.
+- [x] Conditionally expire overdue HELD rows for that class before duplicate/capacity checks and the partial unique index.
+- [x] Use EF Core for cleanup, duplicate/occupancy queries, and insertion; commit cleanup and the new hold together.
+- [x] Return 404 for unknown classes and 409 for duplicate applications/full classes; rollback on failed allocation.
+- [x] Verify the last-seat race, same-student race, lock-wait expiry, history retention, and cleanup/rollback behavior on PostgreSQL.
+
+## Step 7 verification
+
+Verified on 9 November 2026 (Asia/Dhaka), starting from commit `9109adb`:
+
+| Check | Result |
+| --- | --- |
+| Release solution build | Passed; zero warnings and errors |
+| Full backend suite on PostgreSQL 18 | 108 passed, zero failed, zero skipped: 27 foundation + 11 schema + 23 class API + 17 seat-summary + 30 hold-creation cases |
+| Creation contract | Exactly `holdId`, `classId`, `studentId`, `status: HELD`, and `expiresAt`; persisted UUID and timestamps match |
+| Duration | Unset defaults to 600; 37 and 1 second settings work; six invalid configuration values fail startup |
+| Validation | Missing/blank/overlong/multiple student headers and invalid JSON/body fields return 400; trimmed 64-character and synthetic IDs work |
+| Error paths | Unknown class 404, malformed UUID 400, active/confirmed duplicate 409, occupied class 409 |
+| History and cleanup | Reapplication creates a new row; cleanup retains timestamps, affects only overdue HELD rows in the target class, and rolls back on allocation conflicts |
+| Last-seat race | Two independent in-process API hosts: one 201, one 409, exactly one persisted active hold, availability zero |
+| Same-student race | Eight queued requests: one 201, seven 409s, exactly one persisted hold despite spare capacity |
+| Lock-wait expiry | Old hold made overdue after the request begins waiting is expired; creation succeeds with timestamps after that wait and the full configured duration |
+| OpenAPI | Documents the creation route, required student header, and 201 response |
+| Migration snapshot | No pending model changes; no migration or dependency changes needed |
+| Whitespace/diff check | Passed |
+
+Tests used fixture-owned databases in a disposable PostgreSQL 18 container, which was removed with its volume after verification. The race tests verify requests are waiting through PostgreSQL's blocking-session information before releasing the class lock. This exercises separate application hosts sharing a database, not separate OS processes. The broader lifecycle and load/race suite remains scheduled for steps 13–15. Results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step7-holds.trx`; the existing CI command discovers the new cases automatically. No hosted CI run was performed.
+
+Changes are left for review/commit; no commit or push was attempted. Hold retrieval, confirmation/cancellation, the expiration worker, and frontend workflows remain planned.
+
 ## Next planned step
 
-Step 7: implement concurrency-safe hold creation with the class-row lock, overdue-hold cleanup, duplicate/capacity checks, and a last-seat race test.
+Step 8: implement `GET /holds/{holdId}`, including immediate EXPIRED reporting for overdue holds and 404 for unknown IDs.

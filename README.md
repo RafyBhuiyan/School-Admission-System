@@ -4,7 +4,7 @@ A school admission application for parents and administrators, built in the orde
 
 ## Current status
 
-Steps 1–6 are complete locally. The class creation, list, and detail endpoints work with validation, duplicate-name conflicts, and verified seat summaries. All 72 backend test cases pass, including 23 class API cases and 17 seat-summary edge cases against real PostgreSQL. Hold/payment/cancellation endpoints and the parent/admin UI workflows are still planned. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
+Steps 1–7 are complete locally. Class management and concurrency-safe hold creation are implemented. All 108 backend test cases pass, including real PostgreSQL last-seat, duplicate-application, and lock-wait tests. Hold retrieval, payment/cancellation, automatic expiration, and the parent/admin UI workflows are still planned. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
 
 ## Technology
 
@@ -79,7 +79,7 @@ Open `http://localhost:5173` for the React starter. It currently has no API inte
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Local PostgreSQL container settings | Planned for Docker Compose |
 | `ConnectionStrings__DefaultConnection` | Backend PostgreSQL connection string; must contain `Host` and `Database` | Required and validated at startup |
 | `Cors__AllowedOrigins__0` | Allowed frontend origin, default `http://localhost:5173` | Configured and validated at startup |
-| `HOLD_DURATION_SECONDS` | Hold lifetime, default 600 seconds | Planned for lifecycle implementation |
+| `HOLD_DURATION_SECONDS` | Hold lifetime, default 600 seconds | Positive 32-bit integer, validated at startup |
 | `API_BASE_URL` | Browser-reachable backend address | Planned for frontend integration/runtime configuration |
 
 Additional explicit origins can be supplied through `Cors__AllowedOrigins__1`, `Cors__AllowedOrigins__2`, etc. Origins must use HTTP(S), with no wildcard, credentials, path, or trailing slash. The CORS policy allows `GET`, `POST`, `DELETE`, `Content-Type`, and `X-Student-Id`; preflight is handled automatically. Credentials are not enabled.
@@ -88,15 +88,18 @@ Additional explicit origins can be supplied through `Cors__AllowedOrigins__1`, `
 
 All controllers use `[ApiController]` conventions, including automatic HTTP 400 responses for invalid DTOs and JSON. The class request trims its name before Data Annotations validation and requires a positive JSON integer capacity. Errors use `application/problem+json`, with an HTTP status, title, request path, and `traceId`; validation errors also contain an `errors` object. Unhandled exceptions produce a generic 500 response in development and production. Exception messages, stack traces, and query strings are not returned. Unexpected-error logs record the exception type and matching request trace ID without exception-message values.
 
-## Class endpoints
+## Implemented endpoints
 
 | Method | Path | Success |
 | --- | --- | --- |
 | POST | `/classes` | 201 with `id`, `name`, `totalSeats`, and a `Location` header |
 | GET | `/classes` | 200 with all classes and seat summaries; `[]` when empty |
 | GET | `/classes/{classId}` | 200 with the class and seat summary |
+| POST | `/classes/{classId}/holds` | 201 with `holdId`, `classId`, `studentId`, `status`, `expiresAt`; requires `X-Student-Id` |
 
 List/details include `id`, `name`, `totalSeats`, `heldSeats`, `confirmedSeats`, and `availableSeats`. Unknown IDs return 404; malformed input returns 400; duplicate trimmed class names return 409. See [docs/API.md](docs/API.md) for request/response examples and count semantics.
+
+Hold creation accepts one trimmed, non-empty student header up to 64 characters and an optional empty JSON object. A PostgreSQL class-row lock serializes allocation; overdue holds are expired before checking duplicates and capacity. Full classes or existing active/confirmed applications return 409. The default lifetime is 600 seconds from database time captured after acquiring the lock.
 
 ## Database model and migrations
 
@@ -109,7 +112,7 @@ dotnet tool restore
 dotnet ef database update --project Backend/SchoolAdmission.Api
 ```
 
-The local EF CLI is pinned to the same patch version as EF Core. Migrations are applied explicitly at this stage. Concurrency-safe allocation is scheduled for step 7.
+The local EF CLI is pinned to the same patch version as EF Core. Migrations are applied explicitly at this stage. Hold creation uses the existing schema; no extra migration is needed.
 
 ## Verification
 
@@ -121,7 +124,7 @@ npm run build
 npm run lint
 ```
 
-The 21 foundation cases exercise the real ASP.NET Core pipeline using an in-process test host. Eleven schema cases, 23 class API cases, and 17 seat-summary query cases use isolated PostgreSQL databases. They cover the migrated schema, class creation/reads, validation and error contracts, simultaneous duplicate names, status/expiry boundaries, fresh database time, and nonnegative availability. Set `SCHEMA_TEST_CONNECTION_STRING` to a test account with `CREATE DATABASE` permission to run the database-backed cases; otherwise they are explicitly skipped. See [database test instructions](docs/DATABASE.md#real-postgresql-schema-checks). Admission lifecycle integration and seat-allocation concurrency tests remain scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
+The 27 foundation cases exercise the real ASP.NET Core pipeline using an in-process test host. Eleven schema cases, 23 class API cases, 17 seat-summary query cases, and 30 hold-creation cases use isolated PostgreSQL databases. They cover validation, database-clock expiry, history, rollback, and competing allocations as well as the migrated schema and response contracts. Set `SCHEMA_TEST_CONNECTION_STRING` to a test account with `CREATE DATABASE` permission to run the database-backed cases; otherwise they are explicitly skipped. See [database test instructions](docs/DATABASE.md#real-postgresql-schema-checks). Broader lifecycle and concurrency coverage remains scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 See [ASSUMPTIONS.md](ASSUMPTIONS.md) for implementation decisions and [AI_USAGE.md](AI_USAGE.md) for assistance disclosure.
 

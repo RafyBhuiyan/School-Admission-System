@@ -18,7 +18,8 @@ internal sealed class FoundationApiFactory(
             {
                 ["ConnectionStrings:DefaultConnection"] =
                     "Host=localhost;Port=5432;Database=foundation_tests;Username=test;Password=synthetic-test-password",
-                ["Cors:AllowedOrigins:0"] = "http://localhost:5173"
+                ["Cors:AllowedOrigins:0"] = "http://localhost:5173",
+                ["HOLD_DURATION_SECONDS"] = "600"
             };
             if (overrides is not null)
             {

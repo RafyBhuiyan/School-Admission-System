@@ -1,6 +1,6 @@
 # AI usage
 
-I used OpenAI Codex for scaffolding, EF mappings and migrations, class endpoints, backend tests, and documentation drafts. I supplied the revised plan and worked through it one step at a time.
+I used OpenAI Codex for scaffolding, EF mappings and migrations, class/hold-creation endpoints, backend tests, and documentation drafts. I supplied the revised plan and worked through it one step at a time.
 
 During the initial plan review, I corrected three suggestions:
 
@@ -12,4 +12,4 @@ There were concrete implementation corrections too. Adding EF's design package e
 
 I also questioned the handwritten seat-summary SQL. It was replaced with EF Core LINQ, keeping only the PostgreSQL clock expression. The first refactor failed six API tests because EF could not translate filtering/ordering after the record constructor; moving those operations before the response projection fixed it.
 
-At step 6, Codex ran the Release build and PostgreSQL 18 suite: 72 passed, none failed or skipped. The 17 new cases cover seat-summary edge cases. Exact-boundary tests pin only the clock input; a separate live-clock test catches stale transaction time and checks that reads leave overdue rows unchanged. No production fix was needed. This does not prove concurrent seat allocation. The hold services and UI decisions above are still planned. Detailed results are in [PROGRESS.md](docs/PROGRESS.md).
+At step 7, Codex ran the Release build and PostgreSQL 18 suite: 108 passed, none failed or skipped. The concurrency tests verify requests are blocked on a real class-row lock before releasing them. Two test hosts competing for one seat produced one 201 and one 409; eight same-student requests created one hold. Another test expires the old hold while creation waits, then checks cleanup and the new duration. These are in-process test hosts, not a separate-process deployment test. Retrieval, confirmation/cancellation, the worker, and UI remain planned. Detailed results are in [PROGRESS.md](docs/PROGRESS.md).

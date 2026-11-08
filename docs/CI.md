@@ -8,7 +8,7 @@ also be started manually from GitHub's Actions tab once it is on the default bra
 
 | Required check name | Commands |
 | --- | --- |
-| Backend checks | .NET/tool restore, Release build, migration snapshot check, and foundation/PostgreSQL schema/class API/seat-summary tests |
+| Backend checks | .NET/tool restore, Release build, migration snapshot check, and all backend tests including PostgreSQL hold-creation races |
 | Frontend checks | `npm ci`, `npm run lint`, and `npm run build` |
 
 The backend uses the SDK specified in `global.json`. The frontend uses Node.js 22
@@ -16,14 +16,14 @@ and the committed npm lockfile. The jobs run independently on Linux runners and
 need no repository secrets. The backend job provisions a disposable PostgreSQL 18
 service using synthetic test credentials.
 
-The backend test project contains 21 foundation cases for configuration,
+The backend test project contains 27 foundation cases for configuration,
 dependency injection, error/validation responses, CORS, and Swagger, plus 11 real
-PostgreSQL schema cases, 23 class API cases, and 17 seat-summary query cases (72 total). The shared PostgreSQL fixture gives
+PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, and 30 hold-creation cases (108 total). The shared PostgreSQL fixture gives
 each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_STRING`.
 The local EF tool also checks that
-the model matches its committed migration snapshot. These checks do not yet
-validate admission behavior or concurrent allocation. There is no frontend test
-script yet. Extend the database suite with lifecycle/concurrency cases in steps 13–15.
+the model matches its committed migration snapshot. The suite checks concurrent
+hold creation, but confirmation/cancellation and worker races remain planned.
+There is no frontend test script yet. Extend the database suite with broader lifecycle/concurrency cases in steps 13–15.
 
 ## Enable the workflow
 

@@ -18,6 +18,13 @@ builder.Services.AddOptions<DatabaseOptions>()
 builder.Services.AddDbContext<AppDbContext>((services, options) =>
     options.UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.DefaultConnection));
 builder.Services.AddScoped<ClassService>();
+builder.Services.AddScoped<HoldService>();
+builder.Services.AddOptions<HoldOptions>()
+    .Configure<IConfiguration>((options, configuration) =>
+        options.DurationSeconds = int.TryParse(configuration[HoldOptions.DurationKey] ?? "600",
+            System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var seconds) ? seconds : 0)
+    .Validate(options => options.DurationSeconds > 0, "HOLD_DURATION_SECONDS must be a positive 32-bit integer.")
+    .ValidateOnStart();
 
 builder.Services.AddOptions<FrontendCorsOptions>()
     .BindConfiguration(FrontendCorsOptions.SectionName)
