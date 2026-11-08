@@ -1,6 +1,6 @@
 # Implementation progress
 
-Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–3; step 4 has not started.
+Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–5; step 6 has not started.
 
 ## Step 1 — Repository and solution structure
 
@@ -90,6 +90,56 @@ The schema tests created and removed uniquely named databases in a temporary loc
 
 No admission endpoints, lifecycle services, or concurrency-safe allocation have been implemented at step 3. The frontend is unchanged. Step 2 commit `b735ee2` was present when work began; step 3 changes are left for review/commit, with no commit or push attempted.
 
+## Step 4 — Initial assumptions
+
+- [x] Record UUID formats, class/shift representation, and backend/UI student-ID validation differences.
+- [x] Record per-class duplicate rules, cross-class applications, terminal states, history retention, and reapplication.
+- [x] Record simulated payment and idempotent confirmation/cancellation responses.
+- [x] Record database-clock expiry, the exact expiry boundary, overdue commit-before-409 behavior, automatic expiration, and capacity/ordering assumptions.
+- [x] Record 403 ownership responses, public hold retrieval, and demo identity/admin security limitations.
+- [x] Record localStorage continuity, automatic `/me/holds` retrieval, Forget/Change Student actions, and the privacy trade-off.
+- [x] Record countdown/polling authority and existing schema, architecture, configuration, migration, and test-isolation decisions.
+- [x] Add a reason for each decision and distinguish the implemented foundation/schema from upcoming workflows.
+
+## Step 4 verification
+
+Reviewed on 9 November 2026 (Asia/Dhaka) against the revised plan's sections 4–9, 13–14, and section 16 step 4, plus the current entity mappings, configuration, and application setup. All requested assumption topics are documented in `ASSUMPTIONS.md`. The whitespace/diff check passed. This documentation-only step required no new builds or test execution; the 32 passing cases above remain the step 3 verification result.
+
+Step 3 commit `4743375` was present when work began. Step 4 documentation changes are left for review/commit; no commit or push was attempted.
+
+## Step 5 — Class management APIs
+
+- [x] Implement `POST /classes` with a request DTO, trimmed-name validation, positive JSON integer capacity, and a 201 response/Location header.
+- [x] Return 409 for the named class uniqueness constraint, including simultaneous duplicate creates.
+- [x] Implement `GET /classes` and `GET /classes/{classId}` through a shared `ClassService` query and response DTO.
+- [x] Return the exact required seat-summary fields; an empty list is `[]`, unknown UUIDs return 404, and malformed UUIDs return 400.
+- [x] Keep controllers thin, register the scoped service, and use `AppDbContext` directly.
+- [x] Verify endpoint/JSON contracts, validation/errors, duplicate-name races, and mixed-status counts on PostgreSQL.
+- [x] Document requests/responses and setup in `docs/API.md`; keep the short assumptions/AI notes current.
+
+## Step 5 verification
+
+Verified on 9 November 2026 (Asia/Dhaka):
+
+| Check | Result |
+| --- | --- |
+| Release solution build | Passed; zero warnings and errors |
+| Full backend suite on PostgreSQL 18 | 55 passed, zero failed, zero skipped: 21 foundation + 11 schema + 23 class API cases |
+| Creation response and Location | 201 with exactly `id`, `name`, `totalSeats`; Location retrieves the new class |
+| List/detail contract | 200 with `id`, `name`, `totalSeats`, `heldSeats`, `confirmedSeats`, `availableSeats`; empty list is `[]` |
+| Invalid input | 400 for missing/blank/overlong names; missing, nonpositive, fractional, overlarge, or quoted capacities; wrong JSON types, malformed JSON, and malformed UUIDs |
+| Name normalization and boundaries | Trimming precedes validation; a trimmed 200-character name and `int.MaxValue` capacity are accepted |
+| Duplicate names | 409 for a trimmed duplicate; differently cased names remain distinct |
+| Eight simultaneous same-name creates | Exactly one 201, seven 409s, and one persisted class |
+| Mixed-status counts | A future `HELD` and a historical `CONFIRMED` occupy two of five seats; overdue `HELD`, `EXPIRED`, and `CANCELLED` do not occupy seats; list/details both report availability 3 |
+| OpenAPI | Documents POST/GET `/classes` and GET `/classes/{classId}` |
+| Migration snapshot | No pending model changes; no new migration needed |
+| Whitespace/diff check | Passed |
+
+The tests used fixture-owned databases in a temporary PostgreSQL container. Results were saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step5-classes.trx`. The existing CI PostgreSQL setup runs the added tests without new secrets; no hosted CI run was performed here.
+
+Step 4 commit `7b0b953` was present at the start. Step 5 changes are left for review/commit; no commit or push was attempted. The frontend and hold lifecycle endpoints remain unchanged. The duplicate-class-name race does not verify capacity-safe seat allocation; that implementation is scheduled for step 7 and its concurrency suite for steps 13–15.
+
 ## Next planned step
 
-Step 4: record the complete initial business assumptions, including ID formats and validation, duplicate/terminal-state behavior, database expiry semantics, ownership responses, simulated payment, browser continuity, and demo security limitations.
+Step 6: verify seat-summary query edge cases, database-time expiry, confirmed counts, nonnegative availability, and consistent list/detail calculation.

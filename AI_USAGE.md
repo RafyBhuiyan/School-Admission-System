@@ -1,30 +1,13 @@
 # AI usage
 
-## Tools and scope
+I used OpenAI Codex for scaffolding, EF mappings and migrations, class endpoints, backend tests, and documentation drafts. I supplied the revised plan and worked through it one step at a time.
 
-OpenAI Codex assisted with the repository and solution scaffolding for step 1, following the user-supplied revised implementation plan. The user requested sequential implementation, starting with step 1, and a completion report after each step.
+During the initial plan review, I corrected three suggestions:
 
-Assistance included inspecting the existing starters, converting the incorrectly scaffolded test Web API into an xUnit project, organizing the solution, preparing environment placeholders, and writing initial documentation.
+- **Browser persistence:** The AI-assisted draft suggested avoiding `localStorage` for privacy. I overruled that after checking assignment section 1.5: ongoing applications must remain visible after closing and reopening the browser. I kept persistence in the plan, with a Forget This Device action and an explicit shared-device privacy trade-off.
+- **Expiry after lock waits:** I changed the expiry design from `NOW()` to `clock_timestamp()`. PostgreSQL fixes `NOW()` at transaction start, so a request waiting on a `FOR UPDATE` lock could otherwise confirm a hold using stale time. The service must read fresh database time after acquiring the lock.
+- **Student-ID validation:** The initial suggestion put a strict 17-digit regex on the backend too. I kept that check in React but changed the API rule to trimmed, non-empty text up to 64 characters, stored in `VARCHAR(64)`. This avoids rejecting evaluator test IDs such as `student-1`; leading zeros and case are preserved.
 
-## Verification and corrections
+There were concrete implementation corrections too. Adding EF's design package exposed a relational-package version conflict; the packages were aligned at 10.0.8. A generated schema test expected foreign-key SQLSTATE `23503` for restricted deletion, but PostgreSQL 18 returned `23001`; the expectation was corrected.
 
-- Inspection found that `SchoolAdmission.Tests` was a second Web API. It was converted to a test project referencing the API.
-- The PowerShell npm launcher failed by looking for a missing user-level npm installation. Verification used the working Node installation's `npm.cmd`; no global installation was changed.
-- Actual build, lint, startup, and test-discovery results are recorded in `docs/PROGRESS.md`. There are no business tests at step 1, and no claim of concurrency correctness.
-- Human review of the generated implementation and design decisions is pending; this document does not claim independent human verification.
-
-Update this file as subsequent steps are implemented, including mistakes and the checks used to correct them.
-
-## Step 2 assistance
-
-Codex implemented the application foundations: PostgreSQL/EF Core configuration and scoped context registration, startup configuration validation, automatic API-controller validation, Problem Details and sanitized global exceptions, explicit frontend CORS, and development-only Swagger UI. It added 21 foundation test cases and updated the environment examples and documentation.
-
-The implementation was checked against the official ASP.NET Core, Npgsql, and Swagger UI documentation. The first build exposed an incorrect JSON-writing overload and non-constant environment names in test attributes; both were corrected before tests were run successfully. An initial sandboxed test run could not write Windows Event Log entries on error paths. The authorized run outside the sandbox passed all 21 cases. No database connection or concurrency claim is made. Human review remains pending.
-
-## Step 3 assistance
-
-Codex implemented the two entities, enum/string status mapping, EF entity configurations, foreign key and checks, lookup/partial unique indexes, and generated the first migration/snapshot using a pinned EF CLI. It added real PostgreSQL schema tests, a CI PostgreSQL service and snapshot check, and database/ERD documentation.
-
-Adding the design dependency exposed a relational-package patch-version conflict; an explicit matching 10.0.8 relational reference resolved it. The schema test initially expected a general foreign-key error for restricted deletion; PostgreSQL 18 returned its specific `RESTRICT` SQLSTATE, and the expectation was corrected. A mistaken asynchronous model-change-check call was replaced with the supported synchronous method.
-
-Verification used a temporary PostgreSQL 18 Docker container: 32 total foundation/schema cases passed, with zero failures or skips. The migration was applied, rolled back, and reapplied inside a fixture-owned database; the model snapshot had no pending changes. No API lifecycle/concurrency correctness is claimed. Human review remains pending.
+At step 5, Codex ran the Release build and tests against a temporary PostgreSQL 18 container: 55 passed, none failed or skipped. This includes 23 class API cases; eight simultaneous creates with the same name produced one 201 and seven 409s. The existing schema cases also rechecked migration rollback/reapply. This does not prove concurrent seat allocation. The hold services and UI decisions above are still planned. Detailed command results are in [PROGRESS.md](docs/PROGRESS.md).

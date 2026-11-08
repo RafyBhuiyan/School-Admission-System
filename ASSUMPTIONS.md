@@ -1,34 +1,16 @@
-# Assumptions and decisions
+# Assumptions
 
-## Step 1
+These are my decisions for the revised plan. The schema and class endpoints are in place; hold/payment endpoints and browser workflows are still to be implemented.
 
-- Retain the existing `Backend` and `Frontend` directory names; the plan permits different folder names.
-- Retain .NET 10 and React 19 from the existing starters. Both meet the plan's minimum versions. `global.json` selects a stable .NET 10 SDK with feature-band roll-forward.
-- Use one API project and one xUnit test project in the root solution. Services will use `AppDbContext` directly, without boilerplate repositories.
-- `.env.example` is a configuration contract for later steps. It contains placeholders, and is not automatically loaded by the scaffold.
-- The user initialized the GitHub remote at `RafyBhuiyan/School-Admission-System`. Connectivity is verified; public visibility has not been verified because the separate API check was declined.
-
-## Step 2
-
-- The backend requires `ConnectionStrings__DefaultConnection` at startup. It validates the PostgreSQL connection-string syntax and requires explicit `Host` and `Database` values, without exposing configuration values in validation errors.
-- `AppDbContext` is scoped to the request/DI scope. Step 2 registers the PostgreSQL provider but does not connect, run migrations, or create tables. Database connectivity is not yet a readiness guarantee.
-- The frontend origin defaults to `http://localhost:5173`; deployment can override or extend it through indexed `Cors__AllowedOrigins__*` environment variables. Wildcard origins and cookie credentials are not enabled.
-- Swagger UI and the OpenAPI document are available only in development. The existing OpenAPI generator supplies the document; the Swagger UI package provides the interactive viewer.
-- Controllers use Data Annotations and automatic API-controller validation. Input formatting errors, unhandled exceptions, and empty error responses use Problem Details with a request trace ID. Business-state outcomes and student-header validation will be implemented with their endpoints.
-- Foundation tests use the actual HTTP pipeline with test-only controllers and synthetic configuration. They require no live PostgreSQL service and do not establish concurrency correctness.
-
-## Step 3
-
-- Database table names are `AdmissionClasses` and `AdmissionHolds`, with snake_case columns. One class represents a complete grade/shift category.
-- Entities generate UUIDs with `Guid.NewGuid()`. Class names are limited to 200 characters and use the database's default case-sensitive uniqueness.
-- Student IDs use `VARCHAR(64)` and preserve leading zeros/case. Request trimming and backend/UI validation will be implemented at their scheduled endpoint/UI steps.
-- Status is stored as uppercase text, backed by a C# enum and an allowed-values database check. There is no PostgreSQL custom enum type or additional status table.
-- UTC timestamps use `TIMESTAMPTZ`. Insert-time `created_at`/class `updated_at` defaults use `clock_timestamp()`. No application-clock expiry logic or timestamp-update trigger has been added.
-- Class deletion is restricted while application history references it. No class-deletion endpoint is specified.
-- The active/confirmed unique index is based only on stored status; overdue `HELD` cleanup must precede reapplication in the step 7 transaction.
-- Migrations are explicit commands at this stage. The repository's EF CLI and EF packages are aligned at 10.0.8. Docker migration orchestration remains a later packaging step.
-- Real schema tests create/drop a randomly named database on the configured test server, using an account with `CREATE DATABASE` permission. They verify schema behavior and do not assert concurrent allocation safety.
-
-## Business rules
-
-The detailed business assumptions required by step 4 are next. The revised plan remains the baseline; no admission endpoint behavior has been implemented or verified at step 3.
+- I treat each grade/shift as a separate class. I chose UUIDs rather than the sample `c_123`/`h_789` prefixes. Class names are case-sensitive, limited to 200 characters, and trimmed before validation; duplicates return 409.
+- I kept the 17-digit check in React. The API will accept a trimmed, non-empty `X-Student-Id` up to 64 characters, including synthetic IDs such as `student-1`. I store it as `VARCHAR(64)` to preserve leading zeros and case.
+- I apply the duplicate rule per class: one active hold or confirmed admission per student. Different classes are allowed. Expired/cancelled applications stay in history, with their expiry timestamps; reapplying creates a new row. Confirmed admissions cannot be cancelled.
+- I treat the payment button as successful payment. Repeating confirmation returns the same confirmed result (200); repeating an owned cancellation returns 204. Neither retry creates another admission.
+- I chose 403 when a valid student ID tries to confirm/cancel another student's hold, and 404 for an unknown hold. Ownership is checked before changing state.
+- I chose 409 for cancellation of an expired or confirmed application. If a stored `HELD` row is already overdue, confirm/cancel must save `EXPIRED` and commit before returning 409. It must not become `CANCELLED` or have its expiry update rolled back.
+- I use PostgreSQL `clock_timestamp()` after acquiring locks for expiry checks and expiry calculation. Equality with `expires_at` means expired. The default hold is 600 seconds, configurable through `HOLD_DURATION_SECONDS`; a worker will persist expiry without a student request.
+- I interpret first-come, first-served as database allocation-lock order, not browser-click time. Counts come from active holds plus confirmed rows. Overdue holds stop consuming capacity immediately, and stale `HELD` rows must be expired before the partial unique index allows reapplication.
+- I will remember the validated student ID in `localStorage`, restore it on startup, and fetch `/me/holds`. This meets browser-reopen continuity but leaves a sensitive ID on shared devices. Forget This Device clears it; Change Student replaces it and reloads applications. IDs must stay out of logs and URLs.
+- I treat the countdown as a display aid: use server time and polling, disable payment at estimated expiry, and fetch the backend status. The browser clock cannot authorize payment.
+- I leave `POST /classes` unauthenticated for this demo and preserve header-free `GET /holds/{holdId}`. The header and UUIDs do not authenticate anyone; knowing an ID can expose status or allow impersonation. Real deployment would need authentication.
+- I chose services using scoped `AppDbContext` directly, without repository wrappers. Schema/configuration details and verification results are in [DATABASE.md](docs/DATABASE.md) and [PROGRESS.md](docs/PROGRESS.md).

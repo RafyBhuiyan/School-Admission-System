@@ -56,7 +56,7 @@ jobs:
           ConnectionStrings__DefaultConnection: ${{ env.SCHEMA_TEST_CONNECTION_STRING }}
         run: dotnet ef migrations has-pending-model-changes --project Backend/SchoolAdmission.Api --configuration Release --no-build
 
-      # Schema tests create/drop their own database; lifecycle/concurrency tests follow later.
+      # Schema/class API tests own isolated databases; hold lifecycle/concurrency tests follow later.
       - name: Run tests
         run: dotnet test SchoolAdmission.slnx --configuration Release --no-build --no-restore
 

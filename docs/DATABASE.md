@@ -84,8 +84,10 @@ $env:SCHEMA_TEST_CONNECTION_STRING = "Host=localhost;Port=5432;Database=postgres
 dotnet test SchoolAdmission.slnx --configuration Release
 ```
 
-With the variable absent, schema tests are explicitly skipped and foundation tests still run. GitHub Actions supplies an isolated PostgreSQL 18 service and this variable, so its backend job runs both suites and the model-snapshot check.
+With the variable absent, database-backed tests are explicitly skipped and foundation tests still run. GitHub Actions supplies an isolated PostgreSQL 18 service and this variable, so its backend job runs foundation, schema, and class API cases plus the model-snapshot check.
 
 Verified locally against PostgreSQL 18 on 9 November 2026: **32 passed, zero failed, zero skipped** (21 foundation cases and 11 real schema cases). Schema checks cover the 13 domain columns/types/nullability, UUID mappings, leading-zero and maximum-length IDs, UTC timestamps, indexes, positive capacity, unique class names, foreign keys/restricted deletion, allowed statuses, active/confirmed uniqueness, historical reapplication, overdue-index cleanup, and migration rollback/reapply. These checks do not yet test admission endpoints or concurrent seat allocation.
 
 The schema fixture was run in a temporary local Docker PostgreSQL container. Test output was saved locally to `Backend/SchoolAdmission.Tests/TestResults/step3-schema.trx` (ignored by Git).
+
+Step 5 also uses this fixture for class HTTP tests, with a separate owned database per test class. The class cases verify response contracts, validation/errors, duplicate-name races, and counts from mixed application statuses. The step 5 run passed **55 cases** (21 foundation, 11 schema, 23 class API), with zero failures or skips. Results were saved to `Backend/SchoolAdmission.Tests/TestResults/step5-classes.trx`. The duplicate-name test is not a seat-allocation concurrency test.

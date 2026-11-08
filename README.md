@@ -4,7 +4,7 @@ A school admission application for parents and administrators, built in the orde
 
 ## Current status
 
-Steps 1–3 are implemented locally: application foundations, the two database entities, relationships/constraints, required indexes, and the first EF Core migration. The backend builds and all 32 foundation/schema test cases pass, including 11 checks against real PostgreSQL. Admission endpoints and parent/admin workflows are not implemented yet. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
+Steps 1–5 are complete locally. The class creation, list, and detail endpoints now work with validation, duplicate-name conflicts, and seat summaries. All 55 backend test cases pass, including 23 class API cases against real PostgreSQL. Hold/payment/cancellation endpoints and the parent/admin UI workflows are still planned. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
 
 ## Technology
 
@@ -57,7 +57,7 @@ dotnet run --project Backend/SchoolAdmission.Api --launch-profile http
 
 Replace the connection values with your local PostgreSQL settings. API startup validates configuration without automatically opening a database connection or applying migrations. Missing or malformed database configuration prevents startup with a useful message that omits connection-string values.
 
-The API listens on `http://localhost:8080`. In development, Swagger UI is at `http://localhost:8080/swagger/index.html` and the OpenAPI document is at `http://localhost:8080/openapi/v1.json`. Both are disabled in production. There are no admission operations in Swagger yet. The root path returns a 404 Problem Details response.
+The API listens on `http://localhost:8080`. In development, Swagger UI is at `http://localhost:8080/swagger/index.html` and the OpenAPI document is at `http://localhost:8080/openapi/v1.json`. Both are disabled in production. Swagger documents the three class operations. The root path returns a 404 Problem Details response.
 
 In a separate terminal:
 
@@ -86,7 +86,17 @@ Additional explicit origins can be supplied through `Cors__AllowedOrigins__1`, `
 
 ## Errors and validation
 
-All controllers use `[ApiController]` conventions, including automatic HTTP 400 responses for invalid DTOs and JSON. Future request DTOs will declare their validation rules with Data Annotations. Errors use `application/problem+json`, with an HTTP status, title, request path, and `traceId`; validation errors also contain an `errors` object. Unhandled exceptions produce a generic 500 response in development and production. Exception messages, stack traces, and query strings are not returned. Unexpected-error logs record the exception type and matching request trace ID without exception-message values.
+All controllers use `[ApiController]` conventions, including automatic HTTP 400 responses for invalid DTOs and JSON. The class request trims its name before Data Annotations validation and requires a positive JSON integer capacity. Errors use `application/problem+json`, with an HTTP status, title, request path, and `traceId`; validation errors also contain an `errors` object. Unhandled exceptions produce a generic 500 response in development and production. Exception messages, stack traces, and query strings are not returned. Unexpected-error logs record the exception type and matching request trace ID without exception-message values.
+
+## Class endpoints
+
+| Method | Path | Success |
+| --- | --- | --- |
+| POST | `/classes` | 201 with `id`, `name`, `totalSeats`, and a `Location` header |
+| GET | `/classes` | 200 with all classes and seat summaries; `[]` when empty |
+| GET | `/classes/{classId}` | 200 with the class and seat summary |
+
+List/details include `id`, `name`, `totalSeats`, `heldSeats`, `confirmedSeats`, and `availableSeats`. Unknown IDs return 404; malformed input returns 400; duplicate trimmed class names return 409. See [docs/API.md](docs/API.md) for request/response examples and count semantics.
 
 ## Database model and migrations
 
@@ -111,7 +121,7 @@ npm run build
 npm run lint
 ```
 
-The 21 foundation test cases exercise the real ASP.NET Core pipeline using an in-process test host. Eleven additional schema cases apply the actual migration to a uniquely named PostgreSQL test database and verify the ERD/constraints. Set `SCHEMA_TEST_CONNECTION_STRING` to a test account with `CREATE DATABASE` permission to run the schema cases; otherwise they are explicitly skipped. See [schema test instructions](docs/DATABASE.md#real-postgresql-schema-checks). Admission lifecycle integration and concurrency tests remain scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
+The 21 foundation cases exercise the real ASP.NET Core pipeline using an in-process test host. Eleven schema cases and 23 class API cases use isolated PostgreSQL databases. They cover the migrated schema, class creation/reads, validation and error contracts, simultaneous duplicate names, and mixed-status seat summaries. Set `SCHEMA_TEST_CONNECTION_STRING` to a test account with `CREATE DATABASE` permission to run the database-backed cases; otherwise they are explicitly skipped. See [database test instructions](docs/DATABASE.md#real-postgresql-schema-checks). Admission lifecycle integration and seat-allocation concurrency tests remain scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 See [ASSUMPTIONS.md](ASSUMPTIONS.md) for implementation decisions and [AI_USAGE.md](AI_USAGE.md) for assistance disclosure.
 

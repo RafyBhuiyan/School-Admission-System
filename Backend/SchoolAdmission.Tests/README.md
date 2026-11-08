@@ -8,7 +8,7 @@ Coverage includes startup configuration errors, scoped PostgreSQL `AppDbContext`
 
 The foundation tests supply synthetic configuration and do not open a database connection. They run without PostgreSQL or production credentials.
 
-`Integration/DatabaseSchemaTests.cs` adds 11 schema cases against real PostgreSQL. Set `SCHEMA_TEST_CONNECTION_STRING` to a test-server account with `CREATE DATABASE` permission. The fixture creates a uniquely named database, applies the migration, verifies constraints/types/index behavior and rollback/reapply, then drops its own database. Schema cases are explicitly skipped when the variable is absent. GitHub Actions provides a PostgreSQL 18 service and runs all 32 cases. See [database verification](../../docs/DATABASE.md#real-postgresql-schema-checks) for setup.
+`Integration/DatabaseSchemaTests.cs` adds 11 schema cases against real PostgreSQL. `Integration/ClassApiTests.cs` adds 23 HTTP cases for class creation, list/details, exact response fields, validation, 400/404/409 errors, duplicate-name races, and mixed-status seat summaries. Set `SCHEMA_TEST_CONNECTION_STRING` to a test-server account with `CREATE DATABASE` permission. Each test class gets a uniquely named database, applies the migration, and drops its own database afterward. Class API cases reset only that owned database between cases. Database-backed cases are explicitly skipped when the variable is absent. GitHub Actions provides a PostgreSQL 18 service and runs all 55 cases. See [database verification](../../docs/DATABASE.md#real-postgresql-schema-checks) for setup.
 
 Admission lifecycle integration and concurrency tests will be added in steps 13–15; the current tests do not prove seat-allocation correctness.
 

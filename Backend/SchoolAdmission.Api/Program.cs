@@ -5,6 +5,7 @@ using SchoolAdmission.Api.Common;
 using SchoolAdmission.Api.Configuration;
 using SchoolAdmission.Api.Data;
 using SchoolAdmission.Api.Middleware;
+using SchoolAdmission.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddOptions<DatabaseOptions>()
 
 builder.Services.AddDbContext<AppDbContext>((services, options) =>
     options.UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.DefaultConnection));
+builder.Services.AddScoped<ClassService>();
 
 builder.Services.AddOptions<FrontendCorsOptions>()
     .BindConfiguration(FrontendCorsOptions.SectionName)
