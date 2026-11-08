@@ -8,17 +8,18 @@ also be started manually from GitHub's Actions tab once it is on the default bra
 
 | Required check name | Commands |
 | --- | --- |
-| Backend checks | .NET restore, Release build, and test discovery/execution |
+| Backend checks | .NET restore, Release build, and foundation tests |
 | Frontend checks | `npm ci`, `npm run lint`, and `npm run build` |
 
 The backend uses the SDK specified in `global.json`. The frontend uses Node.js 22
 and the committed npm lockfile. The jobs run independently on Linux runners and
 need no repository secrets or database at this stage.
 
-The backend test project currently contains no tests. A green backend check
-therefore confirms restore/build and successful test discovery, not admission
-behavior. There is no frontend test script yet. Add meaningful tests as the
-application grows, and add a PostgreSQL service when database tests need it.
+The backend test project now contains 21 foundation test cases for configuration,
+dependency injection, error/validation responses, CORS, and Swagger. Their test
+host supplies synthetic configuration; the tests do not connect to PostgreSQL
+or validate admission behavior. There is no frontend test script yet. Add a
+PostgreSQL service when the database integration/concurrency tests are implemented.
 
 ## Enable the workflow
 
