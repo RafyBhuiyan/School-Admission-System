@@ -14,3 +14,9 @@ Assistance included inspecting the existing starters, converting the incorrectly
 - Human review of the generated implementation and design decisions is pending; this document does not claim independent human verification.
 
 Update this file as subsequent steps are implemented, including mistakes and the checks used to correct them.
+
+## Step 2 assistance
+
+Codex implemented the application foundations: PostgreSQL/EF Core configuration and scoped context registration, startup configuration validation, automatic API-controller validation, Problem Details and sanitized global exceptions, explicit frontend CORS, and development-only Swagger UI. It added 21 foundation test cases and updated the environment examples and documentation.
+
+The implementation was checked against the official ASP.NET Core, Npgsql, and Swagger UI documentation. The first build exposed an incorrect JSON-writing overload and non-constant environment names in test attributes; both were corrected before tests were run successfully. An initial sandboxed test run could not write Windows Event Log entries on error paths. The authorized run outside the sandbox passed all 21 cases. No database connection or concurrency claim is made. Human review remains pending.

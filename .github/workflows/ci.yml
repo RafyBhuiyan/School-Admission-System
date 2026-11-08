@@ -32,7 +32,7 @@ jobs:
       - name: Build
         run: dotnet build SchoolAdmission.slnx --configuration Release --no-restore
 
-      # The scaffold has no tests yet; discovery does not validate application behavior.
+      # Foundation tests need no database; PostgreSQL lifecycle/concurrency tests follow later.
       - name: Run tests
         run: dotnet test SchoolAdmission.slnx --configuration Release --no-build --no-restore
 
