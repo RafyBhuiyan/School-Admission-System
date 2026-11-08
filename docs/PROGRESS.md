@@ -1,6 +1,6 @@
 # Implementation progress
 
-Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–5; step 6 has not started.
+Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–7; step 8 has not started.
 
 ## Step 1 — Repository and solution structure
 
@@ -138,8 +138,73 @@ Verified on 9 November 2026 (Asia/Dhaka):
 
 The tests used fixture-owned databases in a temporary PostgreSQL container. Results were saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step5-classes.trx`. The existing CI PostgreSQL setup runs the added tests without new secrets; no hosted CI run was performed here.
 
-Step 4 commit `7b0b953` was present at the start. Step 5 changes are left for review/commit; no commit or push was attempted. The frontend and hold lifecycle endpoints remain unchanged. The duplicate-class-name race does not verify capacity-safe seat allocation; that implementation is scheduled for step 7 and its concurrency suite for steps 13–15.
+Step 4 commit `7b0b953` was present at the start. On resuming step 5, the class APIs were already committed as `671d962`. After the ORM review, the handwritten seat-summary CTE/lateral query was replaced with EF Core LINQ. Only the scalar `clock_timestamp()` expression remains handwritten, composed into the same database statement. Filtering and ordering precede the response record projection so EF can translate them. Test logs confirm database-side counts, filtering, ordering, and availability calculation.
+
+The Release build and all 55 PostgreSQL tests passed again after the refactor. The temporary test container and its volume were removed. The refactor and these documentation updates are left for review/commit; no commit or push was attempted. The frontend and hold lifecycle endpoints remain unchanged. The duplicate-class-name race does not verify capacity-safe seat allocation; that implementation is scheduled for step 7 and its concurrency suite for steps 13–15.
+
+## Step 6 — Verify seat summary queries
+
+- [x] Verify only `HELD` rows with expiry strictly later than database time count as held seats.
+- [x] Verify `CONFIRMED` rows count regardless of historical expiry; `EXPIRED`/`CANCELLED` rows never count.
+- [x] Verify available seats for empty, partially occupied, full, and deliberately over-capacity data.
+- [x] Verify list/detail results agree, each class counts only its own rows, and previous applications do not add occupancy.
+- [x] Verify fresh wall-clock time inside an existing transaction and no persisted status changes during reads.
+
+## Step 6 verification
+
+Verified on 9 November 2026 (Asia/Dhaka), starting from commit `03f242f`:
+
+| Check | Result |
+| --- | --- |
+| Release solution build | Passed; zero warnings and errors |
+| Full backend suite on PostgreSQL 18 | 72 passed, zero failed, zero skipped: 21 foundation + 11 schema + 23 class API + 17 seat-summary cases |
+| Status/expiry matrix (8 cases) | Each of the four statuses checked with past and future expiry |
+| Exact boundary (3 cases) | Expiry one microsecond before or equal to the captured time excludes the hold; one microsecond later includes it |
+| Capacity boundary (4 cases) | Exactly full and excess HELD/CONFIRMED/mixed occupancy return zero availability while preserving actual counts |
+| Class isolation/history (1 case) | Same student across two classes, previous expired/cancelled applications, and an empty third class produce independent counts |
+| Live database clock (1 case) | An expiry after transaction start but before the summary query does not occupy a seat; stored status remains HELD |
+| Shared query | All 17 new cases compare list/detail results and verify no entities are tracked by summary reads |
+| Whitespace/diff check | Passed |
+
+The three exact-boundary cases use a test-only command interceptor to replace just the scalar clock expression with a fixed timestamp parameter. PostgreSQL executes the production query's comparisons and counts. The separate existing-transaction test uses the unmodified live clock; it needs no timing sleeps. Existing HTTP tests continue to verify response contracts. Over-capacity rows are seeded directly to exercise the defensive floor, not created through an admission endpoint.
+
+The production LINQ query passed unchanged; no migration or dependency changes were needed. Tests used fixture-owned databases in a disposable PostgreSQL 18 container, which was removed with its volume after verification. Results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step6-summaries.trx`. The existing CI command discovers the new cases automatically; no hosted CI run was performed. Changes are left for review/commit; no commit or push was attempted.
+
+## Step 7 — Concurrency-safe hold creation
+
+- [x] Implement `POST /classes/{classId}/holds` and its exact five-field 201 response.
+- [x] Validate one trimmed, non-empty student header up to 64 characters; accept synthetic IDs and preserve case/leading zeros.
+- [x] Validate optional JSON bodies and the positive `HOLD_DURATION_SECONDS` setting (default 600).
+- [x] Begin a read-committed transaction, lock the class row with parameterized `FOR UPDATE`, then capture `clock_timestamp()`.
+- [x] Conditionally expire overdue HELD rows for that class before duplicate/capacity checks and the partial unique index.
+- [x] Use EF Core for cleanup, duplicate/occupancy queries, and insertion; commit cleanup and the new hold together.
+- [x] Return 404 for unknown classes and 409 for duplicate applications/full classes; rollback on failed allocation.
+- [x] Verify the last-seat race, same-student race, lock-wait expiry, history retention, and cleanup/rollback behavior on PostgreSQL.
+
+## Step 7 verification
+
+Verified on 9 November 2026 (Asia/Dhaka), starting from commit `9109adb`:
+
+| Check | Result |
+| --- | --- |
+| Release solution build | Passed; zero warnings and errors |
+| Full backend suite on PostgreSQL 18 | 108 passed, zero failed, zero skipped: 27 foundation + 11 schema + 23 class API + 17 seat-summary + 30 hold-creation cases |
+| Creation contract | Exactly `holdId`, `classId`, `studentId`, `status: HELD`, and `expiresAt`; persisted UUID and timestamps match |
+| Duration | Unset defaults to 600; 37 and 1 second settings work; six invalid configuration values fail startup |
+| Validation | Missing/blank/overlong/multiple student headers and invalid JSON/body fields return 400; trimmed 64-character and synthetic IDs work |
+| Error paths | Unknown class 404, malformed UUID 400, active/confirmed duplicate 409, occupied class 409 |
+| History and cleanup | Reapplication creates a new row; cleanup retains timestamps, affects only overdue HELD rows in the target class, and rolls back on allocation conflicts |
+| Last-seat race | Two independent in-process API hosts: one 201, one 409, exactly one persisted active hold, availability zero |
+| Same-student race | Eight queued requests: one 201, seven 409s, exactly one persisted hold despite spare capacity |
+| Lock-wait expiry | Old hold made overdue after the request begins waiting is expired; creation succeeds with timestamps after that wait and the full configured duration |
+| OpenAPI | Documents the creation route, required student header, and 201 response |
+| Migration snapshot | No pending model changes; no migration or dependency changes needed |
+| Whitespace/diff check | Passed |
+
+Tests used fixture-owned databases in a disposable PostgreSQL 18 container, which was removed with its volume after verification. The race tests verify requests are waiting through PostgreSQL's blocking-session information before releasing the class lock. This exercises separate application hosts sharing a database, not separate OS processes. The broader lifecycle and load/race suite remains scheduled for steps 13–15. Results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step7-holds.trx`; the existing CI command discovers the new cases automatically. No hosted CI run was performed.
+
+Changes are left for review/commit; no commit or push was attempted. Hold retrieval, confirmation/cancellation, the expiration worker, and frontend workflows remain planned.
 
 ## Next planned step
 
-Step 6: verify seat-summary query edge cases, database-time expiry, confirmed counts, nonnegative availability, and consistent list/detail calculation.
+Step 8: implement `GET /holds/{holdId}`, including immediate EXPIRED reporting for overdue holds and 404 for unknown IDs.

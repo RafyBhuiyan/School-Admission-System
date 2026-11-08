@@ -11,6 +11,23 @@ namespace SchoolAdmission.Tests.Integration;
 
 public sealed class FoundationTests
 {
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("")]
+    [InlineData("not-a-number")]
+    [InlineData("1.5")]
+    [InlineData("2147483648")]
+    public void InvalidHoldDurationFailsStartup(string value)
+    {
+        using var factory = new FoundationApiFactory(overrides: new Dictionary<string, string?>
+        {
+            ["HOLD_DURATION_SECONDS"] = value
+        });
+        var exception = Assert.Throws<OptionsValidationException>(() => factory.CreateClient());
+        Assert.Contains("HOLD_DURATION_SECONDS must be a positive 32-bit integer", exception.Message);
+    }
+
     [Fact]
     public void DbContextUsesPostgreSqlAndIsScopedWithoutOpeningAConnection()
     {
