@@ -91,3 +91,5 @@ Verified locally against PostgreSQL 18 on 9 November 2026: **32 passed, zero fai
 The schema fixture was run in a temporary local Docker PostgreSQL container. Test output was saved locally to `Backend/SchoolAdmission.Tests/TestResults/step3-schema.trx` (ignored by Git).
 
 Step 5 also uses this fixture for class HTTP tests, with a separate owned database per test class. The class cases verify response contracts, validation/errors, duplicate-name races, and counts from mixed application statuses. The step 5 run passed **55 cases** (21 foundation, 11 schema, 23 class API), with zero failures or skips. Results were saved to `Backend/SchoolAdmission.Tests/TestResults/step5-classes.trx`. The duplicate-name test is not a seat-allocation concurrency test.
+
+Step 6 adds 17 seat-summary query cases using the same fixture. All **72 cases** passed on PostgreSQL 18 with zero failures or skips; results are in `Backend/SchoolAdmission.Tests/TestResults/step6-summaries.trx`. The exact expiry-boundary tests pin only the query's clock input; a separate test uses the live database clock inside an existing transaction. No schema changes or new migration were needed.

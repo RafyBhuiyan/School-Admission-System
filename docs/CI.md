@@ -8,7 +8,7 @@ also be started manually from GitHub's Actions tab once it is on the default bra
 
 | Required check name | Commands |
 | --- | --- |
-| Backend checks | .NET/tool restore, Release build, migration snapshot check, and foundation/PostgreSQL schema/class API tests |
+| Backend checks | .NET/tool restore, Release build, migration snapshot check, and foundation/PostgreSQL schema/class API/seat-summary tests |
 | Frontend checks | `npm ci`, `npm run lint`, and `npm run build` |
 
 The backend uses the SDK specified in `global.json`. The frontend uses Node.js 22
@@ -18,7 +18,7 @@ service using synthetic test credentials.
 
 The backend test project contains 21 foundation cases for configuration,
 dependency injection, error/validation responses, CORS, and Swagger, plus 11 real
-PostgreSQL schema cases and 23 class API cases. The shared PostgreSQL fixture gives
+PostgreSQL schema cases, 23 class API cases, and 17 seat-summary query cases (72 total). The shared PostgreSQL fixture gives
 each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_STRING`.
 The local EF tool also checks that
 the model matches its committed migration snapshot. These checks do not yet

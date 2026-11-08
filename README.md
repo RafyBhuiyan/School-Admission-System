@@ -4,7 +4,7 @@ A school admission application for parents and administrators, built in the orde
 
 ## Current status
 
-Steps 1–5 are complete locally. The class creation, list, and detail endpoints now work with validation, duplicate-name conflicts, and seat summaries. All 55 backend test cases pass, including 23 class API cases against real PostgreSQL. Hold/payment/cancellation endpoints and the parent/admin UI workflows are still planned. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
+Steps 1–6 are complete locally. The class creation, list, and detail endpoints work with validation, duplicate-name conflicts, and verified seat summaries. All 72 backend test cases pass, including 23 class API cases and 17 seat-summary edge cases against real PostgreSQL. Hold/payment/cancellation endpoints and the parent/admin UI workflows are still planned. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
 
 ## Technology
 
@@ -121,7 +121,7 @@ npm run build
 npm run lint
 ```
 
-The 21 foundation cases exercise the real ASP.NET Core pipeline using an in-process test host. Eleven schema cases and 23 class API cases use isolated PostgreSQL databases. They cover the migrated schema, class creation/reads, validation and error contracts, simultaneous duplicate names, and mixed-status seat summaries. Set `SCHEMA_TEST_CONNECTION_STRING` to a test account with `CREATE DATABASE` permission to run the database-backed cases; otherwise they are explicitly skipped. See [database test instructions](docs/DATABASE.md#real-postgresql-schema-checks). Admission lifecycle integration and seat-allocation concurrency tests remain scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
+The 21 foundation cases exercise the real ASP.NET Core pipeline using an in-process test host. Eleven schema cases, 23 class API cases, and 17 seat-summary query cases use isolated PostgreSQL databases. They cover the migrated schema, class creation/reads, validation and error contracts, simultaneous duplicate names, status/expiry boundaries, fresh database time, and nonnegative availability. Set `SCHEMA_TEST_CONNECTION_STRING` to a test account with `CREATE DATABASE` permission to run the database-backed cases; otherwise they are explicitly skipped. See [database test instructions](docs/DATABASE.md#real-postgresql-schema-checks). Admission lifecycle integration and seat-allocation concurrency tests remain scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 See [ASSUMPTIONS.md](ASSUMPTIONS.md) for implementation decisions and [AI_USAGE.md](AI_USAGE.md) for assistance disclosure.
 

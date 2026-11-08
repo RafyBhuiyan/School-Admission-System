@@ -1,6 +1,6 @@
 # Implementation progress
 
-Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–5; step 6 has not started.
+Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–6; step 7 has not started.
 
 ## Step 1 — Repository and solution structure
 
@@ -142,6 +142,34 @@ Step 4 commit `7b0b953` was present at the start. On resuming step 5, the class 
 
 The Release build and all 55 PostgreSQL tests passed again after the refactor. The temporary test container and its volume were removed. The refactor and these documentation updates are left for review/commit; no commit or push was attempted. The frontend and hold lifecycle endpoints remain unchanged. The duplicate-class-name race does not verify capacity-safe seat allocation; that implementation is scheduled for step 7 and its concurrency suite for steps 13–15.
 
+## Step 6 — Verify seat summary queries
+
+- [x] Verify only `HELD` rows with expiry strictly later than database time count as held seats.
+- [x] Verify `CONFIRMED` rows count regardless of historical expiry; `EXPIRED`/`CANCELLED` rows never count.
+- [x] Verify available seats for empty, partially occupied, full, and deliberately over-capacity data.
+- [x] Verify list/detail results agree, each class counts only its own rows, and previous applications do not add occupancy.
+- [x] Verify fresh wall-clock time inside an existing transaction and no persisted status changes during reads.
+
+## Step 6 verification
+
+Verified on 9 November 2026 (Asia/Dhaka), starting from commit `03f242f`:
+
+| Check | Result |
+| --- | --- |
+| Release solution build | Passed; zero warnings and errors |
+| Full backend suite on PostgreSQL 18 | 72 passed, zero failed, zero skipped: 21 foundation + 11 schema + 23 class API + 17 seat-summary cases |
+| Status/expiry matrix (8 cases) | Each of the four statuses checked with past and future expiry |
+| Exact boundary (3 cases) | Expiry one microsecond before or equal to the captured time excludes the hold; one microsecond later includes it |
+| Capacity boundary (4 cases) | Exactly full and excess HELD/CONFIRMED/mixed occupancy return zero availability while preserving actual counts |
+| Class isolation/history (1 case) | Same student across two classes, previous expired/cancelled applications, and an empty third class produce independent counts |
+| Live database clock (1 case) | An expiry after transaction start but before the summary query does not occupy a seat; stored status remains HELD |
+| Shared query | All 17 new cases compare list/detail results and verify no entities are tracked by summary reads |
+| Whitespace/diff check | Passed |
+
+The three exact-boundary cases use a test-only command interceptor to replace just the scalar clock expression with a fixed timestamp parameter. PostgreSQL executes the production query's comparisons and counts. The separate existing-transaction test uses the unmodified live clock; it needs no timing sleeps. Existing HTTP tests continue to verify response contracts. Over-capacity rows are seeded directly to exercise the defensive floor, not created through an admission endpoint.
+
+The production LINQ query passed unchanged; no migration or dependency changes were needed. Tests used fixture-owned databases in a disposable PostgreSQL 18 container, which was removed with its volume after verification. Results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step6-summaries.trx`. The existing CI command discovers the new cases automatically; no hosted CI run was performed. Changes are left for review/commit; no commit or push was attempted.
+
 ## Next planned step
 
-Step 6: verify seat-summary query edge cases, database-time expiry, confirmed counts, nonnegative availability, and consistent list/detail calculation.
+Step 7: implement concurrency-safe hold creation with the class-row lock, overdue-hold cleanup, duplicate/capacity checks, and a last-seat race test.
