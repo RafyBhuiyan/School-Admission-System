@@ -20,3 +20,11 @@ Update this file as subsequent steps are implemented, including mistakes and the
 Codex implemented the application foundations: PostgreSQL/EF Core configuration and scoped context registration, startup configuration validation, automatic API-controller validation, Problem Details and sanitized global exceptions, explicit frontend CORS, and development-only Swagger UI. It added 21 foundation test cases and updated the environment examples and documentation.
 
 The implementation was checked against the official ASP.NET Core, Npgsql, and Swagger UI documentation. The first build exposed an incorrect JSON-writing overload and non-constant environment names in test attributes; both were corrected before tests were run successfully. An initial sandboxed test run could not write Windows Event Log entries on error paths. The authorized run outside the sandbox passed all 21 cases. No database connection or concurrency claim is made. Human review remains pending.
+
+## Step 3 assistance
+
+Codex implemented the two entities, enum/string status mapping, EF entity configurations, foreign key and checks, lookup/partial unique indexes, and generated the first migration/snapshot using a pinned EF CLI. It added real PostgreSQL schema tests, a CI PostgreSQL service and snapshot check, and database/ERD documentation.
+
+Adding the design dependency exposed a relational-package patch-version conflict; an explicit matching 10.0.8 relational reference resolved it. The schema test initially expected a general foreign-key error for restricted deletion; PostgreSQL 18 returned its specific `RESTRICT` SQLSTATE, and the expectation was corrected. A mistaken asynchronous model-change-check call was replaced with the supported synchronous method.
+
+Verification used a temporary PostgreSQL 18 Docker container: 32 total foundation/schema cases passed, with zero failures or skips. The migration was applied, rolled back, and reapplied inside a fixture-owned database; the model snapshot had no pending changes. No API lifecycle/concurrency correctness is claimed. Human review remains pending.

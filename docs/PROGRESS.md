@@ -1,6 +1,6 @@
 # Implementation progress
 
-Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–2; step 3 has not started.
+Baseline: user-supplied revised full implementation plan, section 16. Current completed implementation scope: steps 1–3; step 4 has not started.
 
 ## Step 1 — Repository and solution structure
 
@@ -58,6 +58,38 @@ The in-process foundation tests cover scoped PostgreSQL provider registration wi
 
 No live PostgreSQL connection, schema, migrations, admission operations, or concurrency behavior has been tested at this step. The frontend was not changed. Step 2 changes are left for review/commit; no Git commit or push was attempted in this iteration.
 
+## Step 3 — Database model
+
+- [x] Implement `AdmissionClass` and `AdmissionHold` with UUID keys and lifecycle timestamps.
+- [x] Configure the required relationship, positive-capacity constraint, unique class name, status check, and text/UTC mappings.
+- [x] Configure both lookup indexes and partial uniqueness for `HELD`/`CONFIRMED` applications.
+- [x] Generate `20261108192613_InitialAdmissionSchema`, its designer metadata, and model snapshot.
+- [x] Pin the local EF CLI and align EF runtime/design/relational versions at 10.0.8.
+- [x] Verify the migrated schema against the ERD on PostgreSQL 18, including rollback/reapply.
+- [x] Add a PostgreSQL CI service, schema-test execution, and migration-snapshot checks.
+- [x] Document the ERD, mappings, migration commands, and real schema test setup in `docs/DATABASE.md`.
+
+## Step 3 verification
+
+Verified on 9 November 2026 (Asia/Dhaka):
+
+| Check | Result |
+| --- | --- |
+| Dependency and local EF CLI restore | Passed |
+| Release solution build | Passed; zero warnings and errors |
+| Full suite with real PostgreSQL 18 | 32 passed, zero failed, zero skipped (21 foundation + 11 schema cases) |
+| Actual migrated ERD | All 13 domain columns match expected types, lengths, and nullability |
+| Constraints/index behavior | Verified positive seats, unique class names, FK/restricted deletion, allowed statuses, active/confirmed uniqueness, history/reapplication, and 64-character student IDs |
+| UTC mappings and leading zeros | Verified through database round trips |
+| Overdue partial-index behavior | An overdue `HELD` blocks a duplicate until persisted as `EXPIRED`, as required for step 7 cleanup |
+| Initial migration rollback/reapply | Passed in the fixture-owned database |
+| Model snapshot comparison | No pending model changes |
+| Idempotent SQL generation | Passed; generated review script in ignored `obj` output |
+
+The schema tests created and removed uniquely named databases in a temporary local Docker PostgreSQL container. The container and its test volume were removed after verification. Results were saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/step3-schema.trx`. The configured CI workflow has not been executed on GitHub during this iteration.
+
+No admission endpoints, lifecycle services, or concurrency-safe allocation have been implemented at step 3. The frontend is unchanged. Step 2 commit `b735ee2` was present when work began; step 3 changes are left for review/commit, with no commit or push attempted.
+
 ## Next planned step
 
-Step 3: implement the two entities, relationships, constraints, indexes (including partial uniqueness), and the first EF Core migration; verify the schema against the ERD.
+Step 4: record the complete initial business assumptions, including ID formats and validation, duplicate/terminal-state behavior, database expiry semantics, ownership responses, simulated payment, browser continuity, and demo security limitations.

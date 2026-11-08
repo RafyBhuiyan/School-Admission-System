@@ -4,14 +4,14 @@ A school admission application for parents and administrators, built in the orde
 
 ## Current status
 
-Steps 1–2 are implemented locally: solution scaffolding, PostgreSQL/EF Core configuration, dependency injection, Problem Details, automatic controller validation, CORS, and development Swagger UI. The backend builds and all 21 foundation test cases pass. Admission endpoints, the database model, and parent/admin workflows are not implemented yet. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
+Steps 1–3 are implemented locally: application foundations, the two database entities, relationships/constraints, required indexes, and the first EF Core migration. The backend builds and all 32 foundation/schema test cases pass, including 11 checks against real PostgreSQL. Admission endpoints and parent/admin workflows are not implemented yet. See [docs/PROGRESS.md](docs/PROGRESS.md) for verified scope. Docker Compose will be added in steps 22–24.
 
 ## Technology
 
 - .NET 10 controller-based Web API (satisfies .NET 8+).
 - xUnit test project referencing the API.
 - React 19, TypeScript, and Vite (satisfies React 18+).
-- EF Core with the Npgsql PostgreSQL provider; entities and migrations follow in step 3.
+- EF Core with the Npgsql PostgreSQL provider, configured entities, and an initial migration.
 
 ## Structure
 
@@ -55,7 +55,7 @@ $env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=s
 dotnet run --project Backend/SchoolAdmission.Api --launch-profile http
 ```
 
-Replace the connection values with your local PostgreSQL settings when database operations are added. Step 2 validates configuration but does not open a database connection or create a schema. Missing or malformed database configuration prevents startup with a useful message that omits connection-string values.
+Replace the connection values with your local PostgreSQL settings. API startup validates configuration without automatically opening a database connection or applying migrations. Missing or malformed database configuration prevents startup with a useful message that omits connection-string values.
 
 The API listens on `http://localhost:8080`. In development, Swagger UI is at `http://localhost:8080/swagger/index.html` and the OpenAPI document is at `http://localhost:8080/openapi/v1.json`. Both are disabled in production. There are no admission operations in Swagger yet. The root path returns a 404 Problem Details response.
 
@@ -88,6 +88,19 @@ Additional explicit origins can be supplied through `Cors__AllowedOrigins__1`, `
 
 All controllers use `[ApiController]` conventions, including automatic HTTP 400 responses for invalid DTOs and JSON. Future request DTOs will declare their validation rules with Data Annotations. Errors use `application/problem+json`, with an HTTP status, title, request path, and `traceId`; validation errors also contain an `errors` object. Unhandled exceptions produce a generic 500 response in development and production. Exception messages, stack traces, and query strings are not returned. Unexpected-error logs record the exception type and matching request trace ID without exception-message values.
 
+## Database model and migrations
+
+The model has `AdmissionClasses` and `AdmissionHolds` with UUID keys, UTC timestamps, `VARCHAR(64)` student IDs, a required class foreign key, positive-capacity validation, a unique class name, and a partial unique index protecting `HELD`/`CONFIRMED` applications. See [docs/DATABASE.md](docs/DATABASE.md) for the ERD, mappings, indexes, and schema verification.
+
+With your local PostgreSQL connection configured:
+
+```powershell
+dotnet tool restore
+dotnet ef database update --project Backend/SchoolAdmission.Api
+```
+
+The local EF CLI is pinned to the same patch version as EF Core. Migrations are applied explicitly at this stage. Concurrency-safe allocation is scheduled for step 7.
+
 ## Verification
 
 ```powershell
@@ -98,7 +111,7 @@ npm run build
 npm run lint
 ```
 
-The 21 foundation test cases exercise the real ASP.NET Core pipeline using an in-process test host. They cover startup validation, PostgreSQL provider/scoped registration, CORS, Problem Details, DTO/JSON validation, and Swagger environment behavior. They do not connect to PostgreSQL or prove admission behavior. Real database integration and concurrency tests remain scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
+The 21 foundation test cases exercise the real ASP.NET Core pipeline using an in-process test host. Eleven additional schema cases apply the actual migration to a uniquely named PostgreSQL test database and verify the ERD/constraints. Set `SCHEMA_TEST_CONNECTION_STRING` to a test account with `CREATE DATABASE` permission to run the schema cases; otherwise they are explicitly skipped. See [schema test instructions](docs/DATABASE.md#real-postgresql-schema-checks). Admission lifecycle integration and concurrency tests remain scheduled for steps 13–15. Verified results are recorded in [docs/PROGRESS.md](docs/PROGRESS.md).
 
 See [ASSUMPTIONS.md](ASSUMPTIONS.md) for implementation decisions and [AI_USAGE.md](AI_USAGE.md) for assistance disclosure.
 

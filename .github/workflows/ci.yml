@@ -17,6 +17,22 @@ jobs:
     name: Backend checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: schema_test
+          POSTGRES_PASSWORD: ci-schema-test-password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U schema_test -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SCHEMA_TEST_CONNECTION_STRING: Host=localhost;Port=5432;Database=postgres;Username=schema_test;Password=ci-schema-test-password
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -29,10 +45,18 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore SchoolAdmission.slnx
 
+      - name: Restore local EF Core tool
+        run: dotnet tool restore
+
       - name: Build
         run: dotnet build SchoolAdmission.slnx --configuration Release --no-restore
 
-      # Foundation tests need no database; PostgreSQL lifecycle/concurrency tests follow later.
+      - name: Check migration snapshot
+        env:
+          ConnectionStrings__DefaultConnection: ${{ env.SCHEMA_TEST_CONNECTION_STRING }}
+        run: dotnet ef migrations has-pending-model-changes --project Backend/SchoolAdmission.Api --configuration Release --no-build
+
+      # Schema tests create/drop their own database; lifecycle/concurrency tests follow later.
       - name: Run tests
         run: dotnet test SchoolAdmission.slnx --configuration Release --no-build --no-restore
 
