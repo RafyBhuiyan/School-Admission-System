@@ -10,6 +10,19 @@ namespace SchoolAdmission.Api.Controllers;
 
 public sealed class HoldsController(HoldService holdService) : ControllerBase
 {
+    [HttpGet("holds/{holdId}")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [ProducesResponseType(typeof(HoldDetailsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<HoldDetailsResponse>> GetById(Guid holdId, CancellationToken cancellationToken)
+    {
+        var hold = await holdService.GetByIdAsync(holdId, cancellationToken);
+        return hold is null
+            ? Problem(statusCode: StatusCodes.Status404NotFound, title: "Hold not found.")
+            : Ok(hold);
+    }
+
     [HttpPost("classes/{classId}/holds")]
     [ProducesResponseType(typeof(CreateHoldResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]

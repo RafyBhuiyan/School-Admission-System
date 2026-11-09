@@ -1,7 +1,4 @@
-using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Npgsql;
 using SchoolAdmission.Api.Data;
 using SchoolAdmission.Api.DTOs.Responses;
 using SchoolAdmission.Api.Enums;
@@ -184,22 +181,4 @@ public sealed class SeatSummaryQueryTests(PostgreSqlSchemaFixture database)
 
     private static ClassSummaryResponse Summary(AdmissionClass admissionClass, int held, int confirmed, int available) =>
         new(admissionClass.Id, admissionClass.Name, admissionClass.TotalSeats, held, confirmed, available);
-
-    private sealed class FixedDatabaseTimeInterceptor(DateTime value) : DbCommandInterceptor
-    {
-        public int ClockReads { get; private set; }
-
-        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
-            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
-            CancellationToken cancellationToken = default)
-        {
-            const string clockExpression = "SELECT clock_timestamp() AS \"Value\"";
-            Assert.Contains(clockExpression, command.CommandText);
-            command.CommandText = command.CommandText.Replace(clockExpression,
-                "SELECT @seat_summary_test_time AS \"Value\"", StringComparison.Ordinal);
-            command.Parameters.Add(new NpgsqlParameter<DateTime>("seat_summary_test_time", value));
-            ClockReads++;
-            return ValueTask.FromResult(result);
-        }
-    }
 }

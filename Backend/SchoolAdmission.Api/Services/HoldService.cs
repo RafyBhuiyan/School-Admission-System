@@ -13,6 +13,27 @@ namespace SchoolAdmission.Api.Services;
 
 public sealed class HoldService(AppDbContext dbContext, IOptions<HoldOptions> options)
 {
+    public async Task<HoldDetailsResponse?> GetByIdAsync(Guid holdId, CancellationToken cancellationToken)
+    {
+        var databaseTime = dbContext.Database.SqlQuery<DateTime>($"SELECT clock_timestamp() AS \"Value\"");
+        var details = await (from now in databaseTime
+                             from hold in dbContext.AdmissionHolds
+                             where hold.Id == holdId
+                             select new
+                             {
+                                 hold.Id,
+                                 hold.ClassId,
+                                 Status = hold.Status == AdmissionHoldStatus.HELD && hold.ExpiresAt <= now
+                                     ? AdmissionHoldStatus.EXPIRED : hold.Status,
+                                 hold.ExpiresAt,
+                                 ServerTime = now
+                             }).SingleOrDefaultAsync(cancellationToken);
+
+        // Expiry is effective immediately, even before a worker persists EXPIRED.
+        return details is null ? null : new HoldDetailsResponse(
+            details.Id, details.ClassId, details.Status.ToString(), details.ExpiresAt, details.ServerTime);
+    }
+
     public async Task<CreateHoldResult> CreateAsync(Guid classId, string studentId, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
