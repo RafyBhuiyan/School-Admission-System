@@ -1,6 +1,6 @@
 # Database model and migrations
 
-Step 3 implements two domain tables, matching the revised plan's ERD. EF Core also maintains its own `__EFMigrationsHistory` metadata table.
+The database contains two domain tables. EF Core also maintains its own `__EFMigrationsHistory` metadata table.
 
 ```mermaid
 erDiagram
@@ -34,11 +34,11 @@ erDiagram
 | Student ID | Required `VARCHAR(64)`; preserves leading zeros and case; no numeric conversion or database 17-digit restriction |
 | Status | Required `VARCHAR(16)`; enum conversion preserves `HELD`, `CONFIRMED`, `EXPIRED`, `CANCELLED`; a check rejects other stored values |
 | Created/updated timestamps | `TIMESTAMPTZ`; PostgreSQL `clock_timestamp()` supplies insert defaults |
-| Expiry timestamp | Required `TIMESTAMPTZ`; the hold service will assign it from database time in step 7 |
+| Expiry timestamp | Required `TIMESTAMPTZ`; the hold service assigns it from database time captured after acquiring the class lock |
 | Confirmed/cancelled timestamps | Nullable `TIMESTAMPTZ`; lifecycle services will populate them on transition |
 | Relationship | Required class foreign key; deleting a class with application history is restricted |
 
-The EF entities use UTC `DateTime` values. `updated_at` has an insert default, not an automatic update trigger; a future class-update operation must assign its update timestamp explicitly. There is no class-update endpoint in the current plan. Historical expiry timestamps remain populated after terminal transitions.
+The EF entities use UTC `DateTime` values. `updated_at` has an insert default, not an automatic update trigger; a future class-update operation must assign its update timestamp explicitly. There is no class-update endpoint. Historical expiry timestamps remain populated after terminal transitions.
 
 Database names are exactly `"AdmissionClasses"` and `"AdmissionHolds"`, with snake_case columns. PostgreSQL SQL must quote these mixed-case table names.
 
@@ -51,7 +51,7 @@ Database names are exactly `"AdmissionClasses"` and `"AdmissionHolds"`, with sna
 | `ix_admission_holds_student_created` | `(student_id, created_at)` |
 | `ux_admission_holds_class_student_active` | Unique `(class_id, student_id)` where `status IN ('HELD', 'CONFIRMED')` |
 
-The partial index intentionally uses status alone. An overdue row still stored as `HELD` occupies that index until it is persisted as `EXPIRED`. Step 7 must expire overdue rows inside the allocation transaction before checking for a duplicate and inserting. The database does not keep independent held/confirmed seat counters. Capacity protection across different students will come from the PostgreSQL row-locking transaction in step 7.
+The partial index intentionally uses status alone. An overdue row still stored as `HELD` occupies that index until it is persisted as `EXPIRED`. Hold creation expires overdue rows inside the allocation transaction before checking for a duplicate and inserting. The database does not keep independent held/confirmed seat counters. A PostgreSQL class-row lock serializes allocation across students and API instances.
 
 ## Migration commands
 
@@ -84,16 +84,10 @@ $env:SCHEMA_TEST_CONNECTION_STRING = "Host=localhost;Port=5432;Database=postgres
 dotnet test SchoolAdmission.slnx --configuration Release
 ```
 
-With the variable absent, database-backed tests are explicitly skipped and foundation tests still run. GitHub Actions supplies an isolated PostgreSQL 18 service and this variable, so its backend job runs foundation, schema, and class API cases plus the model-snapshot check.
+With the variable absent, database-backed tests are explicitly skipped and foundation tests still run. GitHub Actions supplies an isolated PostgreSQL 18 service and this variable, so its backend job runs the full suite plus the model-snapshot check.
 
-Verified locally against PostgreSQL 18 on 9 November 2026: **32 passed, zero failed, zero skipped** (21 foundation cases and 11 real schema cases). Schema checks cover the 13 domain columns/types/nullability, UUID mappings, leading-zero and maximum-length IDs, UTC timestamps, indexes, positive capacity, unique class names, foreign keys/restricted deletion, allowed statuses, active/confirmed uniqueness, historical reapplication, overdue-index cleanup, and migration rollback/reapply. These checks do not yet test admission endpoints or concurrent seat allocation.
+Schema checks cover column types/nullability, UUID mappings, student-ID preservation, UTC timestamps, indexes, capacity constraints, foreign keys/restricted deletion, allowed statuses, active/confirmed uniqueness, historical reapplication, overdue-index cleanup, and migration rollback/reapply. API/query tests share the fixture, with a separate database per test class.
 
-The schema fixture was run in a temporary local Docker PostgreSQL container. Test output was saved locally to `Backend/SchoolAdmission.Tests/TestResults/step3-schema.trx` (ignored by Git).
+Concurrency tests queue requests behind a held class lock and inspect `pg_stat_activity`/`pg_blocking_pids` before releasing it. Two independent in-process API hosts compete for the last seat, and eight same-student requests exercise duplicate protection. Persisted occupancy is checked against capacity. Failed allocation rolls back its cleanup; successful allocation commits cleanup and the new row together.
 
-Step 5 also uses this fixture for class HTTP tests, with a separate owned database per test class. The class cases verify response contracts, validation/errors, duplicate-name races, and counts from mixed application statuses. The step 5 run passed **55 cases** (21 foundation, 11 schema, 23 class API), with zero failures or skips. Results were saved to `Backend/SchoolAdmission.Tests/TestResults/step5-classes.trx`. The duplicate-name test is not a seat-allocation concurrency test.
-
-Step 6 adds 17 seat-summary query cases using the same fixture. All **72 cases** passed on PostgreSQL 18 with zero failures or skips; results are in `Backend/SchoolAdmission.Tests/TestResults/step6-summaries.trx`. The exact expiry-boundary tests pin only the query's clock input; a separate test uses the live database clock inside an existing transaction. No schema changes or new migration were needed.
-
-Step 7 adds 30 hold-creation cases and six foundation configuration cases. All **108 cases** passed on PostgreSQL 18, with zero failures or skips; results are in `Backend/SchoolAdmission.Tests/TestResults/step7-holds.trx`. Creation uses an explicit read-committed transaction, locks the class row with `FOR UPDATE`, and captures `clock_timestamp()` after the lock before EF cleanup, duplicate checks, capacity checks, and insertion. The partial unique index remains a final duplicate safeguard. No schema change was needed; the migration snapshot check passed.
-
-Concurrency tests queue requests behind a held class lock and inspect `pg_stat_activity`/`pg_blocking_pids` before releasing it. Two independent in-process API hosts competing for the last seat yielded one 201 and one 409. Eight same-student applications yielded one 201 and seven 409s. Persisted occupancy was checked against capacity. The lock-wait case verifies that an expiry after transaction start is handled using fresh database time. A failed allocation rolls back its cleanup; successful allocation commits cleanup and the new row together.
+Seat-summary and hold-retrieval tests check exact expiry boundaries using a fixed clock input and fresh wall-clock behavior using unmodified database queries. Retrieval reports an overdue HELD row as EXPIRED without persisting the transition; confirmed/cancelled statuses and historical timestamps remain unchanged. See [verification results](PROGRESS.md) and [test coverage](../Backend/SchoolAdmission.Tests/README.md).

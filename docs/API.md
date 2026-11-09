@@ -1,6 +1,6 @@
 # Admission API
 
-Class operations were implemented in step 5 and hold creation in step 7. Base URL: `http://localhost:8080`. Apply the initial migration to the configured PostgreSQL database before calling these endpoints; see [database setup](DATABASE.md#migration-commands).
+Base URL: `http://localhost:8080`. Apply the initial migration to the configured PostgreSQL database before calling these endpoints; see [database setup](DATABASE.md#migration-commands).
 
 Class creation/list/details require no authentication or `X-Student-Id` header in this demo. Hold creation requires the student identifier header; it is not authentication.
 
@@ -65,16 +65,34 @@ The header is trimmed, required, and limited to 64 characters after trimming. Ca
 
 `HOLD_DURATION_SECONDS` defaults to 600 when unset. Invalid, nonpositive, or over-32-bit integer settings fail startup. Creation uses a read-committed transaction and a parameterized `SELECT ... FOR UPDATE` on the class row. After locking, it captures PostgreSQL `clock_timestamp()`, conditionally expires overdue `HELD` rows in that class, checks the student's existing active/confirmed application, counts occupied seats, and inserts only if capacity remains. Cleanup, the new hold, and the captured-time-plus-duration expiry commit together. EF Core handles the cleanup, checks, and insertion.
 
-Expired/cancelled applications remain in history, and reapplication creates a new hold ID. Duplicate active/confirmed applications and full classes return 409. Failed allocation rolls back the transaction, including its cleanup. Overdue rows still do not occupy seats in summaries; the background worker planned for step 9 will persist expiry independently. A student may apply to different classes.
+Expired/cancelled applications remain in history, and reapplication creates a new hold ID. Duplicate active/confirmed applications and full classes return 409. Failed allocation rolls back the transaction, including its cleanup. Overdue rows still do not occupy seats in summaries; the background expiration worker is not implemented yet. A student may apply to different classes.
+
+## Retrieve a hold
+
+`GET /holds/{holdId}` requires no student header. Example `200 OK` response:
+
+```json
+{
+  "holdId": "334b0c66-a05e-413b-b7d8-52baf2ac3158",
+  "classId": "10eeb2c5-54c4-4e4c-9f2c-dc197d5db560",
+  "status": "HELD",
+  "expiresAt": "2026-11-09T12:10:00Z",
+  "serverTime": "2026-11-09T12:05:00Z"
+}
+```
+
+Allowed statuses are `HELD`, `CONFIRMED`, `EXPIRED`, and `CANCELLED`. If a stored `HELD` row has `expiresAt <= serverTime`, the response reports `EXPIRED` immediately. Other statuses remain unchanged, regardless of their historical expiry. A single EF query captures `clock_timestamp()` for both the expiry comparison and `serverTime`. Timestamps are UTC.
+
+Reads preserve the stored status and all timestamps. The response omits the student ID and uses `Cache-Control: no-store, no-cache` so clients can poll for fresh state. A supplied student header does not restrict access: this is a public status endpoint, and UUIDs are not authentication. Unknown holds return 404; malformed UUIDs return 400.
 
 ## Errors
 
 | Status | Situation |
 | --- | --- |
 | 400 | Invalid class input/UUID/JSON, missing/blank/overlong/multiple student headers, or unsupported hold-body fields |
-| 404 | A valid UUID does not identify a class |
+| 404 | A valid UUID does not identify the requested class or hold |
 | 409 | Duplicate class name, no remaining seat, or an existing active/confirmed application for this student and class |
 
 Errors use `application/problem+json` with `status`, `title`, `instance`, and `traceId`; validation errors also include `errors`. Unexpected database/infrastructure failures remain generic 500 responses. Database exceptions and constraint names are not exposed in the response.
 
-Swagger UI is available in development at `http://localhost:8080/swagger/index.html`. Hold retrieval, payment, cancellation, and My Applications endpoints are still planned.
+Swagger UI is available in development at `http://localhost:8080/swagger/index.html`. Payment, cancellation, and My Applications endpoints are not implemented yet.

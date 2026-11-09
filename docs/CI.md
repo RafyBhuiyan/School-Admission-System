@@ -1,6 +1,6 @@
 # Continuous integration
 
-Add CI after the initial scaffold commit, before step 2. The workflow in
+The workflow in
 `.github/workflows/ci.yml` runs on every branch push and pull request. It can
 also be started manually from GitHub's Actions tab once it is on the default branch.
 
@@ -18,12 +18,12 @@ service using synthetic test credentials.
 
 The backend test project contains 27 foundation cases for configuration,
 dependency injection, error/validation responses, CORS, and Swagger, plus 11 real
-PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, and 30 hold-creation cases (108 total). The shared PostgreSQL fixture gives
+PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, 30 hold-creation cases, and 16 hold-retrieval cases (124 total). The shared PostgreSQL fixture gives
 each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_STRING`.
 The local EF tool also checks that
 the model matches its committed migration snapshot. The suite checks concurrent
 hold creation, but confirmation/cancellation and worker races remain planned.
-There is no frontend test script yet. Extend the database suite with broader lifecycle/concurrency cases in steps 13–15.
+There is no frontend test script yet. Broader lifecycle/concurrency coverage remains to be added.
 
 ## Enable the workflow
 
@@ -52,14 +52,14 @@ After the first successful run, configure branch protection in GitHub:
 Branch protection availability depends on repository visibility and GitHub plan.
 See GitHub's [branch protection guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/managing-a-branch-protection-rule).
 
-For each subsequent implementation step, create a branch in GitHub Desktop,
+For each change, create a branch in GitHub Desktop,
 commit and publish it, and open a pull request into `master`. Wait for both
 checks to pass before merging. CI detects failures; branch protection enforces
 the merge requirement.
 
 ## Add deployment later
 
-Add continuous deployment after Docker packaging (planned steps 22–24), a hosting
+Add continuous deployment after Docker packaging, a hosting
 target, and deployment configuration are ready. Extend CI as features arrive:
 add backend tests, database integration and concurrency tests, frontend tests,
 and container build checks at their corresponding implementation stages.
