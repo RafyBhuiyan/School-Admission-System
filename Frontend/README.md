@@ -1,32 +1,64 @@
-# React + TypeScript + Vite
+# Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 and TypeScript with Vite. The portal identifies a student, remembers the selection, displays application history, creates admission classes, applies for seats, and confirms or cancels holds through the shared API client.
 
-Currently, two official plugins are available:
+## Run and check
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use Node.js 22.12+:
 
-## React Compiler
+```powershell
+npm ci
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Checks: `npm test`, `npm run lint`, and `npm run build`. Tests use Node's built-in runner with type stripping and TypeScript type checking; no additional test dependency is needed.
 
-## Expanding the Oxlint configuration
+## Runtime API address
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+Edit `public/config.json` for development:
 
 ```json
 {
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
+  "API_BASE_URL": "http://localhost:8080"
 }
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The browser fetches this file with caching disabled before rendering the app. The URL must be an absolute HTTP(S) address reachable from the browser, with no credentials, query, or fragment. An API path prefix is allowed. Configure backend CORS for the frontend origin. Docker-internal hostnames are usually not reachable from the host browser.
+
+Vite copies the file into `dist/config.json`. For an already-built deployment, replace that file and reload the browser; JavaScript does not need to be rebuilt. Serve it without long-lived caching. Exporting `API_BASE_URL` in a shell does not rewrite the JSON file or change an existing bundle. Container-startup generation is not implemented yet. The file is public and must contain no secrets.
+
+Missing or invalid configuration displays a startup error rather than silently selecting a different backend.
+
+## Shared requests
+
+`src/api/client.ts` provides typed methods for all eight backend operations. Components can call `useApi()` from `src/apiContext.ts`; `main.tsx` supplies the initialized client through `ApiProvider`.
+
+Student-specific methods take the identifier explicitly and send it only in `X-Student-Id`. Identifiers are not logged or placed in URLs. The API client accepts synthetic values up to 64 characters; the identification form requires exactly 17 ASCII digits after trimming and preserves leading zeros. Class/hold path IDs must be UUIDs.
+
+`ApiError` has a `kind`, optional HTTP `status`, validation `errors`, and `traceId`. Kinds distinguish HTTP, network, timeout, caller cancellation, unreadable responses, and local validation. HTTP 400/403/404/409 retain useful Problem Details titles; server failures and non-JSON errors use safe messages. Requests omit cookies, disable caching/redirects, and time out after 15 seconds. Pass `{ signal }` to cancel a request. Mutations are never automatically retried; refresh status after an uncertain outcome before deciding whether to retry.
+
+## Student continuity
+
+The validated identifier is stored under `school-admission.student-id` in localStorage. On startup the session restores only a valid stored value and automatically calls `/me/holds`. The screen displays only its final four digits. Each history row opens the application details; the list can also be refreshed manually.
+
+History includes all statuses and classes returned by the API, with original expiry timestamps retained for terminal applications. Only the identifier is saved locally; application data is fetched again on refresh or reopening. While any row is HELD, the list refreshes every 2.5 seconds after the previous read completes, even with details closed. Background reads keep the rows and controls steady. Hidden pages pause polling and fetch fresh history on return. Failures retain the last rows with a visible error and retry while a hold remains; terminal-only and empty lists stop polling.
+
+Change student clears the old selection/history and saved value, then presents an empty form. Selecting another student persists the new value and loads their applications. Forget this device clears storage, the selection, history, and request errors. Both actions abort pending loads; generation checks ignore late responses even if the transport ignores cancellation. Storage events synchronize other open tabs. Effect cleanup also cancels loads, including React Strict Mode's development restart.
+
+If browser storage is blocked, temporary access still works with a visible notice. A failed clear advises the user to clear the site's data before leaving a shared device. A request failure retains the valid student selection and offers a retry. The screen explains the shared-device persistence trade-off; this identifier is not authentication.
+
+## Classes and applying
+
+Class cards show total, held, confirmed, and available seats. The catalog refreshes every four seconds after the previous read completes, pauses polling when the page is hidden, and cleans up requests/timers on unmount. Failures retain the last snapshot, show an error, and allow retry. Class creation requires a trimmed 1–200-character name and a positive integer capacity up to 2147483647. Server validation and duplicate-name conflicts stay visible without clearing the form.
+
+Apply requires a selected student and available capacity. Existing active/confirmed applications disable reapplication; the backend remains authoritative. Duplicate clicks are blocked while a write is pending. Successful creation refreshes classes; successful Apply refreshes both classes and the selected student's history. A 409 also triggers fresh reads. Changing students aborts an in-flight Apply and suppresses its late response. Mutations are never retried automatically.
+
+The demo administration form is unauthenticated, matching the backend. Do not treat it as production administrator authorization.
+
+## Application details
+
+Applying opens details automatically; View application opens an existing entry. The countdown uses the difference between database `serverTime` and `expiresAt`, anchored to `performance.now()`. The entire request round trip is deducted conservatively. Changing the computer's wall clock cannot extend payment time.
+
+While the selected application is HELD, details poll every 2.5 seconds after each completed read. Hidden pages pause timers and refresh on return. At estimated zero, actions are disabled and the backend is queried; only its response can report EXPIRED. Confirmation simulates payment without charging money. Confirmation/cancellation disable competing actions, reconcile details, and refresh history and class counts. Lost responses trigger reads, never an automatic mutation retry. Terminal statuses, failed reads, and ownership failures cannot enable invalid actions. Selection changes and unmounting abort requests and discard late results.
+
+The 106 tests include 30 API/configuration, 19 student-session, 21 class-catalog, 23 detail/countdown, and 13 history/continuity cases. Build and lint also pass. History tests cover all statuses, fresh reads after reopening, periodic refresh, visibility, errors, cleanup, and student changes during a pending poll. Browser checks against the real .NET API and disposable PostgreSQL 18 verified refresh/tab-reopen restoration, all four statuses, an external confirmation appearing through history polling, switching students, cross-tab updates, and forgetting across reload/reopen. Earlier checks covered class creation, applying, confirmation, cancellation, and expiry. Services were cleaned up and runtime configuration restored. The [history preview](../docs/evidence/application-history.png) contains synthetic data. Full browser-process restart and mobile viewport checks remain unverified.

@@ -1,6 +1,6 @@
 # AI usage
 
-I planned the project and used OpenAI Codex to help with scaffolding, EF mappings and migrations, API implementation, tests, and documentation drafts. I made the design choices and reviewed the suggestions against the assignment.
+I planned the project and used OpenAI Codex to help with scaffolding, EF mappings and migrations, backend/frontend API code, tests, and documentation drafts. I made the design choices and reviewed the suggestions against the assignment.
 
 During the initial review, I corrected three suggestions:
 
@@ -12,4 +12,8 @@ There were implementation corrections too. Adding EF's design package exposed a 
 
 I also questioned the handwritten seat-summary SQL. It was replaced with EF Core LINQ, keeping only the database clock expression. The first refactor failed six API tests because EF could not translate filtering/ordering after the record constructor; moving those operations before the response projection fixed it.
 
-Codex ran the Release build and PostgreSQL suite: 218 tests passed, none failed or skipped. For 100 distinct-student requests and 10 seats, the new capacity test produced 10 holds and 90 conflicts. Starting with five occupied seats produced five holds and 95 conflicts. Both database checks found exactly 10 occupied seats. Actual metrics were extracted from TRX output rather than written from expected numbers. The test uses one in-process host and a 20-connection pool, so this is not a deployment or throughput test. No production fix was needed. See [verification notes](docs/PROGRESS.md).
+For the countdown, I kept the backend authoritative: local zero disables actions and triggers a read, rather than declaring the hold expired. I used server time with monotonic elapsed time and deducted request transit time. Tests also check that a lost confirmation response cannot cause an automatic second write.
+
+The history review caught another gap: polling the open detail panel left the list stale when details were closed. I added independent list refresh while any hold remains, with quiet background reads and cancellation on student changes.
+
+The latest frontend checks passed 106 tests plus build/lint. Real API/PostgreSQL browser checks verified saved-student restoration after refresh/tab reopen, all statuses, external confirmation appearing through polling, and switching/forgetting across tabs. Earlier checks covered class creation and the application lifecycle. All data was synthetic; temporary services were cleaned up. The unchanged backend's previous suite passed 220 tests. Full browser-process restart and container deployment remain unverified. See [verification notes](docs/PROGRESS.md).

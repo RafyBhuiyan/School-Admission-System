@@ -2,7 +2,7 @@
 
 A school admission application with class management, temporary seat holds, and PostgreSQL transactions protecting limited seats. The backend supports creating classes, viewing availability, applying, confirming/cancelling holds, and reviewing a student's application history.
 
-Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds, and confirmation simulates successful payment. The frontend is currently a Vite starter without API integration.
+Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds. The portal supports student identification, application history, class creation, seat availability, applying, and confirming or cancelling a hold with simulated payment.
 
 ## Run locally
 
@@ -26,7 +26,9 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173`. API integration and Docker Compose startup are not available yet.
+Open `http://localhost:5173` and enter a 17-digit birth registration number. The browser remembers the student and automatically loads their applications on return. History includes held, confirmed, expired, and cancelled applications; it refreshes every 2.5 seconds while a hold remains. Use Change student or Forget this device when appropriate. Edit `Frontend/public/config.json` to set the browser-reachable `API_BASE_URL` (default `http://localhost:8080`); see [frontend setup](Frontend/README.md). Docker Compose startup is not available yet.
+
+Use Create a class for demo administration. Seat counts refresh every four seconds while the page is visible. Applying opens the application details with a server-synchronized countdown. Confirm simulates payment; Cancel releases the seat. Status changes refresh availability and history, and the backend verifies expiry when the timer reaches zero.
 
 ## Configuration
 
@@ -73,8 +75,10 @@ $env:SCHEMA_TEST_CONNECTION_STRING = "Host=localhost;Port=5432;Database=postgres
 dotnet test SchoolAdmission.slnx --configuration Release
 ```
 
-Tests create and remove their own databases. Without this variable, database tests are skipped. Coverage includes complete API workflows, validation, migrations, expiry, failed-write rollback, and competing requests for the last seat. See the [integration coverage matrix](docs/TESTING.md).
+Tests create and remove their own databases. Without this variable, database tests are skipped. Coverage includes API workflows, validation, migrations, expiry, failed-write rollback, backend-process restarts, and competing requests for the last seat. See the [integration coverage matrix](docs/TESTING.md).
 
 On PostgreSQL 18, **100 concurrent requests for 10 seats produced 10 created holds and 90 conflicts**. With three held seats and two confirmations already present, the same burst produced five holds and 95 conflicts. Persisted occupancy was exactly 10 in both cases. This uses one in-process API host with a 20-connection database pool; [actual test output](docs/evidence/capacity-concurrency.txt) is preserved.
 
-GitHub Actions runs backend checks and frontend lint/build on pushes and pull requests. Further details: [test coverage](Backend/SchoolAdmission.Tests/README.md), [database setup](docs/DATABASE.md), [CI](docs/CI.md), [implementation status](docs/PROGRESS.md), and [AI usage](AI_USAGE.md).
+Frontend checks run from `Frontend`: `npm test`, `npm run lint`, and `npm run build`.
+
+GitHub Actions runs backend checks and frontend tests/lint/build on pushes and pull requests. Further details: [test coverage](Backend/SchoolAdmission.Tests/README.md), [database setup](docs/DATABASE.md), [CI](docs/CI.md), [implementation status](docs/PROGRESS.md), and [AI usage](AI_USAGE.md).

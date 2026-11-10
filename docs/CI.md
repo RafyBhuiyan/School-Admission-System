@@ -9,7 +9,7 @@ also be started manually from GitHub's Actions tab once it is on the default bra
 | Required check name | Commands |
 | --- | --- |
 | Backend checks | .NET/tool restore, Release build, migration snapshot check, and all backend tests including PostgreSQL hold-creation races |
-| Frontend checks | `npm ci`, `npm run lint`, and `npm run build` |
+| Frontend checks | `npm ci`, `npm run lint`, `npm test`, and `npm run build` |
 
 The backend uses the SDK specified in `global.json`. The frontend uses Node.js 22
 and the committed npm lockfile. The jobs run independently on Linux runners and
@@ -18,12 +18,12 @@ service using synthetic test credentials.
 
 The backend test project contains 33 foundation cases for configuration,
 dependency injection, error/validation responses, CORS, and Swagger, plus 11 real
-PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, 30 hold-creation cases, 16 hold-retrieval cases, 6 expiration cases, 28 confirmation cases, 26 cancellation cases, 19 student-application cases, 7 workflow/failure cases, and 2 capacity-burst cases (218 total). The shared PostgreSQL fixture gives
+PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, 30 hold-creation cases, 16 hold-retrieval cases, 6 expiration cases, 28 confirmation cases, 26 cancellation cases, 19 student-application cases, 7 workflow/failure cases, 2 capacity-burst cases, and 2 real-process restart cases (220 total). The shared PostgreSQL fixture gives
 each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_STRING`.
 The local EF tool also checks that
 the model matches its committed migration snapshot. The suite checks concurrent
-hold creation, concurrent confirmation/cancellation, and expiration contention. Broader load and deployment tests remain outstanding.
-There is no frontend test script yet. Broader lifecycle/concurrency coverage remains to be added.
+hold creation, concurrent confirmation/cancellation, expiration contention, and persistence across real API-process restarts. Restart tests launch the built API on an ephemeral loopback port using the installed .NET runtime, then terminate only their own processes. Broader load and container deployment tests remain outstanding.
+The frontend runs 106 API/configuration, student-session, class-catalog, application-detail, and history/continuity tests with Node's built-in test runner and TypeScript type checking. Tests cover validation, polling, creation/application flows, server-synchronized countdowns, confirmation/cancellation, expiry, saved identity, history restoration, request races, storage failures, and a loopback HTTP server; no external service or new test dependency is required. Automated browser workflow coverage remains to be added.
 
 ## Enable the workflow
 
