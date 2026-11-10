@@ -12,8 +12,9 @@
 - Cancellation with ownership checks, terminal-state protection, retained history, and released capacity for reapplication.
 - Student application listing with header-based filtering, class names, effective expiry, and retained history across classes.
 - Frontend runtime configuration and shared typed API client for all eight operations, exposed through a React provider/hook.
+- Student identification with 17-digit validation, localStorage restoration, automatic application retrieval, and Change/Forget actions that clear stale state and pending requests.
 
-Frontend admission workflows and Docker Compose packaging remain unimplemented. The starter UI now loads runtime configuration and initializes the shared API provider.
+Class administration/apply/payment/cancellation UI controls and Docker Compose packaging remain unimplemented. The portal currently supports student identification and read-only application history.
 
 ## Verification
 
@@ -37,6 +38,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Capacity bursts | 2 cases sending 100 distinct-student requests to a 10-seat class, empty and partially occupied; persisted results match available capacity |
 | Backend restart | 2 cases terminating and restarting real API processes, checking persisted history/timestamps, retries/ownership, terminal-state protection, and worker catch-up after downtime |
 | Frontend API/configuration | 30 passed, zero failed/skipped; all eight methods, headers, error normalization, cancellation/timeouts, and runtime changes through a real HTTP server |
+| Student session | 19 passed, zero failed/skipped; strict validation, persistence/reopen, switching/forgetting, aborted/stale requests, storage failures, retries, and cross-tab restoration |
 | Frontend build/lint | Passed; production bundle includes a separate runtime config file |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
@@ -65,4 +67,6 @@ A separate five-second hold expires while the API is stopped. Before restart it 
 
 The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/lifecycle-restart.trx`. No hosted CI run was performed during this verification. Broader load, multi-process allocation concurrency, and container deployment checks remain outstanding.
 
-The frontend loads `config.json` before rendering and initializes the shared API provider. Its client sends student IDs only in headers, omits credentials, disables caching/redirects, supports aborts and a 15-second timeout, and normalizes Problem Details without exposing raw failure bodies. Mutations are not automatically retried. The 30 frontend tests use fetch doubles plus an actual loopback HTTP server, including runtime URL changes without rebuilding. Build and lint were checked after the change; the backend was unchanged and its 220-case result above is from the preceding backend verification. CI now runs frontend tests. Browser workflows and end-to-end browser/backend integration remain unverified.
+The frontend loads `config.json` before rendering and initializes the shared API provider. Its client sends student IDs only in headers, omits credentials, disables caching/redirects, supports aborts and a 15-second timeout, and normalizes Problem Details without exposing raw failure bodies. Mutations are not automatically retried. All 49 frontend tests passed; build and lint also passed. The backend was unchanged and its 220-case result above is from the preceding backend verification.
+
+Browser verification used the in-app browser and a local synthetic API fixture: short input was rejected, a valid leading-zero identifier loaded history, reload/tab reopen restored it automatically, changing students cleared old history, and forgetting cleared both open tabs and remained cleared after reload. A [synthetic preview](evidence/student-portal.png) was saved with only the final four identifier digits visible. The temporary fixture/server were stopped and runtime configuration restored to the normal API address. Live .NET/browser integration, mobile viewport checks, and a full browser-process restart were not performed.

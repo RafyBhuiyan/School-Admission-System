@@ -23,7 +23,7 @@ each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_ST
 The local EF tool also checks that
 the model matches its committed migration snapshot. The suite checks concurrent
 hold creation, concurrent confirmation/cancellation, expiration contention, and persistence across real API-process restarts. Restart tests launch the built API on an ephemeral loopback port using the installed .NET runtime, then terminate only their own processes. Broader load and container deployment tests remain outstanding.
-The frontend runs 30 API-client/runtime-configuration tests with Node's built-in test runner and TypeScript type checking. Tests include an ephemeral loopback HTTP server; no external service or new test dependency is required. Browser workflow coverage remains to be added.
+The frontend runs 49 API-client/runtime-configuration and student-session tests with Node's built-in test runner and TypeScript type checking. Tests include an ephemeral loopback HTTP server, persistence/validation, request races, and storage failures; no external service or new test dependency is required. Automated browser workflow coverage remains to be added.
 
 ## Enable the workflow
 

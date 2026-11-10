@@ -1,6 +1,6 @@
 # Frontend
 
-React 19 and TypeScript with Vite. The shared API client is initialized at startup; the UI is still a starter without admission workflows.
+React 19 and TypeScript with Vite. The portal identifies a student, remembers the selection, and displays their application history through the shared API client. Class administration, applying, and payment/cancellation controls remain unimplemented.
 
 ## Run and check
 
@@ -33,8 +33,16 @@ Missing or invalid configuration displays a startup error rather than silently s
 
 `src/api/client.ts` provides typed methods for all eight backend operations. Components can call `useApi()` from `src/apiContext.ts`; `main.tsx` supplies the initialized client through `ApiProvider`.
 
-Student-specific methods take the identifier explicitly and send it only in `X-Student-Id`. No identifier is retained globally, logged, or placed in a URL. The client trims IDs and accepts synthetic values up to 64 characters; the future identification form will enforce the 17-digit UI requirement. Class/hold path IDs must be UUIDs.
+Student-specific methods take the identifier explicitly and send it only in `X-Student-Id`. Identifiers are not logged or placed in URLs. The API client accepts synthetic values up to 64 characters; the identification form requires exactly 17 ASCII digits after trimming and preserves leading zeros. Class/hold path IDs must be UUIDs.
 
 `ApiError` has a `kind`, optional HTTP `status`, validation `errors`, and `traceId`. Kinds distinguish HTTP, network, timeout, caller cancellation, unreadable responses, and local validation. HTTP 400/403/404/409 retain useful Problem Details titles; server failures and non-JSON errors use safe messages. Requests omit cookies, disable caching/redirects, and time out after 15 seconds. Pass `{ signal }` to cancel a request. Mutations are never automatically retried; refresh status after an uncertain outcome before deciding whether to retry.
 
-The 30 tests cover request contracts, error handling, cancellation, configuration validation, and real HTTP requests after runtime URL changes. Browser interactions and live .NET/backend integration are not covered by these client tests.
+## Student continuity
+
+The validated identifier is stored under `school-admission.student-id` in localStorage. On startup the session restores only a valid stored value and automatically calls `/me/holds`. The screen displays only its final four digits. Applications are read-only here and can be refreshed manually.
+
+Change student clears the old selection/history and saved value, then presents an empty form. Selecting another student persists the new value and loads their applications. Forget this device clears storage, the selection, history, and request errors. Both actions abort pending loads; generation checks ignore late responses even if the transport ignores cancellation. Storage events synchronize other open tabs. Effect cleanup also cancels loads, including React Strict Mode's development restart.
+
+If browser storage is blocked, temporary access still works with a visible notice. A failed clear advises the user to clear the site's data before leaving a shared device. A request failure retains the valid student selection and offers a retry. The screen explains the shared-device persistence trade-off; this identifier is not authentication.
+
+The 49 tests include 30 API/configuration checks and 19 session/validation checks covering restoration, switching, forgetting, races, storage failures, and retries. Browser checks used a local synthetic API fixture to verify invalid input, automatic loading after reload/tab reopen, changing students, and forgetting across two tabs. The [preview](../docs/evidence/student-portal.png) contains only synthetic data and a masked identifier. Live .NET/browser integration and a full browser-process restart were not exercised in this frontend verification.

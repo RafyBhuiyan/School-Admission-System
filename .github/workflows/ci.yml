@@ -84,7 +84,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Test API client and runtime configuration
+      - name: Test frontend
         run: npm test
 
       - name: Build
