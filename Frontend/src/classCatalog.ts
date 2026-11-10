@@ -136,7 +136,7 @@ export function createClassCatalog(api: CatalogApi, student: StudentSession, sch
     try {
       const createdHold = await api.createHold(classId, snapshot.studentId, { signal: controller.signal })
       if (!attached || version !== applyVersion || controller.signal.aborted) return false
-      update({ applyingId: null, createdHold, message: 'Application created. A seat is temporarily held for this student.' })
+      update({ applyingId: null, createdHold, message: 'Application created. Open its details for the current status.' })
       await Promise.all([refresh(), student.refresh()])
       return true
     } catch (error) {

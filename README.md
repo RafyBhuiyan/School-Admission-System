@@ -81,4 +81,6 @@ On PostgreSQL 18, **100 concurrent requests for 10 seats produced 10 created hol
 
 Frontend checks run from `Frontend`: `npm test`, `npm run lint`, and `npm run build`.
 
+Browser workflow, expiry, polling, continuity, and error-recovery results are recorded in [UI verification](docs/UI-VERIFICATION.md).
+
 GitHub Actions runs backend checks and frontend tests/lint/build on pushes and pull requests. Further details: [test coverage](Backend/SchoolAdmission.Tests/README.md), [database setup](docs/DATABASE.md), [CI](docs/CI.md), [implementation status](docs/PROGRESS.md), and [AI usage](AI_USAGE.md).

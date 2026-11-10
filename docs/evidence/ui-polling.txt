@@ -1,0 +1,13 @@
+Browser UI polling observations - 11 November 2026
+Real API/PostgreSQL through a test-only loopback recording proxy.
+Steady active-hold window only; startup, manual refreshes, and delayed expiry responses excluded.
+Intervals are seconds from completed read to next request start.
+
+GET /holds/{holdId}: 11 reads
+2.508, 2.51, 2.513, 2.513, 2.518, 2.506, 2.518, 2.518, 2.515, 2.512
+
+GET /me/holds: 10 reads
+2.512, 2.516, 2.516, 2.514, 2.532, 2.517, 2.525, 2.515, 2.517
+
+GET /classes: 6 reads
+4.013, 4.021, 4.018, 4.013, 4.014

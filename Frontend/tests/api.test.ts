@@ -8,12 +8,17 @@ import { loadConfig } from '../src/config.ts'
 
 const classId = '11111111-1111-1111-1111-111111111111'
 const holdId = '22222222-2222-2222-2222-222222222222'
+const classSummary = { id: classId, name: 'Morning', totalSeats: 10, heldSeats: 1, confirmedSeats: 0, availableSeats: 9 }
+const holdDetails = { holdId, classId, status: 'HELD', expiresAt: '2030-01-01T00:10:00Z', serverTime: '2030-01-01T00:00:00Z' }
+const createdHold = { ...holdDetails, studentId: '000Student-1' }
+const history = [{ ...holdDetails, className: 'Morning' }]
 
 test('all eight endpoint methods use the expected paths, headers, methods, and bodies', async () => {
   const seen: { path: string; options: RequestInit }[] = []
   const fetcher: typeof fetch = async (path, options) => {
     seen.push({ path: String(path), options: options! })
-    return options?.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json({ ok: true })
+    const responses = [classSummary, [classSummary], classSummary, createdHold, holdDetails, { holdId, status: 'CONFIRMED' }, undefined, history]
+    return options?.method === 'DELETE' ? new Response(null, { status: 204 }) : Response.json(responses[seen.length - 1])
   }
   const api = createAdmissionApi('http://localhost:8080/api/', { fetcher })
   await api.createClass({ name: 'Morning', totalSeats: 10 })
@@ -76,6 +81,54 @@ for (const status of [400, 403, 404, 409, 500]) {
 test('malformed successful JSON is a response error', async () => {
   const api = createAdmissionApi('http://localhost:8080', { fetcher: async () => new Response('not json') })
   await assert.rejects(api.getClasses(), (error: unknown) => error instanceof ApiError && error.kind === 'response')
+})
+
+const responseCases = [
+  { name: 'class creation', call: (api: ReturnType<typeof createAdmissionApi>) => api.createClass({ name: 'Morning', totalSeats: 10 }), valid: classSummary },
+  { name: 'class list', call: (api: ReturnType<typeof createAdmissionApi>) => api.getClasses(), valid: [classSummary] },
+  { name: 'class detail', call: (api: ReturnType<typeof createAdmissionApi>) => api.getClass(classId), valid: classSummary },
+  { name: 'hold creation', call: (api: ReturnType<typeof createAdmissionApi>) => api.createHold(classId, 'student-1'), valid: createdHold },
+  { name: 'hold detail', call: (api: ReturnType<typeof createAdmissionApi>) => api.getHold(holdId), valid: holdDetails },
+  { name: 'confirmation', call: (api: ReturnType<typeof createAdmissionApi>) => api.confirmHold(holdId, 'student-1'), valid: { holdId, status: 'CONFIRMED' } },
+  { name: 'history', call: (api: ReturnType<typeof createAdmissionApi>) => api.getMyHolds('student-1'), valid: history },
+]
+for (const endpoint of responseCases) {
+  test(`${endpoint.name} validates successful data before exposing it to components`, async () => {
+    let calls = 0
+    const api = createAdmissionApi('http://localhost:8080', { fetcher: async () => { calls++; return Response.json(endpoint.valid) } })
+    assert.deepEqual(await endpoint.call(api), endpoint.valid)
+    for (const invalid of [null, { unexpected: 'private payload' }, 'private payload']) {
+      const broken = createAdmissionApi('http://localhost:8080', { fetcher: async () => { calls++; return Response.json(invalid) } })
+      await assert.rejects(endpoint.call(broken), (error: unknown) => error instanceof ApiError && error.kind === 'response' && !error.message.includes('private payload'))
+    }
+    assert.equal(calls, 4) // Invalid mutation responses must not cause an automatic retry.
+  })
+}
+
+test('nested invalid fields cannot enter lists or countdown state', async () => {
+  const invalidResponses = [
+    { call: responseCases[1].call, value: [null] },
+    { call: responseCases[1].call, value: [{ ...classSummary, availableSeats: '9' }] },
+    { call: responseCases[1].call, value: [{ ...classSummary, totalSeats: -1 }] },
+    { call: responseCases[6].call, value: [{ ...history[0], status: 'UNKNOWN' }] },
+    { call: responseCases[6].call, value: [{ ...history[0], className: null }] },
+    { call: responseCases[6].call, value: [{ ...history[0], expiresAt: 'invalid' }] },
+    { call: responseCases[4].call, value: { ...holdDetails, serverTime: 'invalid' } },
+    { call: responseCases[3].call, value: { ...createdHold, status: 'CONFIRMED' } },
+    { call: responseCases[5].call, value: { holdId, status: 'HELD' } },
+  ]
+  for (const { call, value } of invalidResponses) {
+    const api = createAdmissionApi('http://localhost:8080', { fetcher: async () => Response.json(value) })
+    await assert.rejects(call(api), (error: unknown) => error instanceof ApiError && error.kind === 'response')
+  }
+})
+
+test('cancellation requires its empty 204 contract; reads reject empty responses', async () => {
+  const wrongCancellation = createAdmissionApi('http://localhost:8080', { fetcher: async () => Response.json({}) })
+  await assert.rejects(wrongCancellation.cancelHold(holdId, 'student-1'), (error: unknown) => error instanceof ApiError && error.kind === 'response')
+  const empty = createAdmissionApi('http://localhost:8080', { fetcher: async () => new Response(null, { status: 204 }) })
+  assert.equal(await empty.cancelHold(holdId, 'student-1'), undefined)
+  for (const endpoint of responseCases) await assert.rejects(endpoint.call(empty), (error: unknown) => error instanceof ApiError && error.kind === 'response')
 })
 
 test('network failure is safe and a mutation is never automatically retried', async () => {
