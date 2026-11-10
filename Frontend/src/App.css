@@ -75,3 +75,14 @@ footer span { color: #8a9790; }
 .success-note { padding: 13px 17px; border-radius: 8px; background: #e6f2e9; color: #28604d; font-size: 13px; }
 @media (max-width: 600px) { .catalog-actions { justify-content: flex-start; } .class-section > .applications-heading { align-items: flex-start; flex-direction: column; } .class-form { grid-template-columns: 1fr; padding: 20px; gap: 18px; } }
 .seat-counts dd { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.hold-detail { margin-top: 28px; border: 1px solid #b8cec4; background: #fff; border-radius: 14px; padding: 28px; scroll-margin-top: 20px; }
+.hold-overview { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.hold-overview p { color: #70817f; font-size: 11px; margin: 0; }
+.reference { overflow-wrap: anywhere; }
+.countdown { margin: 24px 0; background: #f0f5ed; border-radius: 10px; padding: 24px; display: flex; align-items: center; gap: 32px; }
+.countdown strong { font-size: 42px; line-height: 1.2; font-weight: 600; font-variant-numeric: tabular-nums; color: #174c4d; }
+.countdown > p { max-width: 380px; font-size: 13px; color: #5a7366; margin: 0; }
+.hold-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.hold-actions .primary { width: auto; min-width: 240px; }
+.application-actions { display: flex; gap: 12px; align-items: center; }
+@media (max-width: 600px) { .hold-detail { padding: 20px; } .countdown { align-items: flex-start; flex-direction: column; gap: 16px; padding: 20px; } .hold-actions button { width: 100%; } .hold-actions .primary { width: 100%; min-width: 0; } .application-actions { align-items: flex-end; flex-direction: column; } .hold-detail > .applications-heading { align-items: flex-start; } }

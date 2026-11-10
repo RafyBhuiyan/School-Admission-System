@@ -1,6 +1,6 @@
 # Frontend
 
-React 19 and TypeScript with Vite. The portal identifies a student, remembers the selection, displays application history, creates admission classes, and applies for available seats through the shared API client. Payment/cancellation controls remain unimplemented.
+React 19 and TypeScript with Vite. The portal identifies a student, remembers the selection, displays application history, creates admission classes, applies for seats, and confirms or cancels holds through the shared API client.
 
 ## Run and check
 
@@ -39,7 +39,7 @@ Student-specific methods take the identifier explicitly and send it only in `X-S
 
 ## Student continuity
 
-The validated identifier is stored under `school-admission.student-id` in localStorage. On startup the session restores only a valid stored value and automatically calls `/me/holds`. The screen displays only its final four digits. Applications are read-only here and can be refreshed manually.
+The validated identifier is stored under `school-admission.student-id` in localStorage. On startup the session restores only a valid stored value and automatically calls `/me/holds`. The screen displays only its final four digits. Each history row opens the application details; the list can also be refreshed manually.
 
 Change student clears the old selection/history and saved value, then presents an empty form. Selecting another student persists the new value and loads their applications. Forget this device clears storage, the selection, history, and request errors. Both actions abort pending loads; generation checks ignore late responses even if the transport ignores cancellation. Storage events synchronize other open tabs. Effect cleanup also cancels loads, including React Strict Mode's development restart.
 
@@ -53,4 +53,10 @@ Apply requires a selected student and available capacity. Existing active/confir
 
 The demo administration form is unauthenticated, matching the backend. Do not treat it as production administrator authorization.
 
-The 70 tests include 30 API/configuration checks, 19 student-session checks, and 21 class catalog/validation/polling/mutation checks. Identity browser checks used a local synthetic API fixture. Class creation, validation, duplicate-name conflicts, applying, automatic count/history updates, full/duplicate disabling, and discovery of externally created classes through polling were checked in the browser against the real .NET API and disposable PostgreSQL 18 database. Temporary services were stopped and runtime configuration restored afterward. The [catalog preview](../docs/evidence/class-catalog.png) contains synthetic class/application data. Full browser-process restart and mobile viewport checks remain unverified.
+## Application details
+
+Applying opens details automatically; View application opens an existing entry. The countdown uses the difference between database `serverTime` and `expiresAt`, anchored to `performance.now()`. The entire request round trip is deducted conservatively. Changing the computer's wall clock cannot extend payment time.
+
+While the selected application is HELD, details poll every 2.5 seconds after each completed read. Hidden pages pause timers and refresh on return. At estimated zero, actions are disabled and the backend is queried; only its response can report EXPIRED. Confirmation simulates payment without charging money. Confirmation/cancellation disable competing actions, reconcile details, and refresh history and class counts. Lost responses trigger reads, never an automatic mutation retry. Terminal statuses, failed reads, and ownership failures cannot enable invalid actions. Selection changes and unmounting abort requests and discard late results.
+
+The 93 tests include 30 API/configuration, 19 student-session, 21 class-catalog, and 23 detail/countdown cases. Build and lint also pass. Detail tests cover server time, transit delay, expiry, terminal states, lost responses, duplicate actions, visibility, and selection races. Browser checks against the real .NET API and disposable PostgreSQL 18 verified confirmation, cancellation, automatic expiry, and refreshed history/counts. Earlier browser checks covered class creation and polling; identity checks used a synthetic API fixture. Services were cleaned up and runtime configuration restored. The [countdown preview](../docs/evidence/hold-details.png) contains synthetic data. Full browser-process restart and mobile viewport checks remain unverified.

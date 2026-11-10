@@ -4,12 +4,17 @@ import { useApi } from './apiContext.ts'
 import { browserStudentStorage, createStudentSession, STUDENT_STORAGE_KEY, validStudentId } from './studentSession.ts'
 import './App.css'
 import { ClassPanel } from './ClassPanel.tsx'
+import { createClassCatalog } from './classCatalog.ts'
+import { createHoldDetails } from './holdDetails.ts'
+import { HoldDetailPanel } from './HoldDetailPanel.tsx'
 
 const statusNames = { HELD: 'Seat held', CONFIRMED: 'Confirmed', EXPIRED: 'Expired', CANCELLED: 'Cancelled' }
 
 function App() {
   const api = useApi()
   const [session] = useState(() => createStudentSession(api, browserStudentStorage()))
+  const [catalog] = useState(() => createClassCatalog(api, session))
+  const [details] = useState(() => createHoldDetails(api, session, () => Promise.all([catalog.refresh(), session.refresh()])))
   const state = useSyncExternalStore(session.subscribe, session.getSnapshot)
   const [input, setInput] = useState('')
   const [validation, setValidation] = useState<string | null>(null)
@@ -58,16 +63,17 @@ function App() {
         ) : (
           <>
             <section className="student-bar" aria-label="Selected student"><div><p className="eyebrow">CURRENT STUDENT</p><h2>Registration ending in {state.studentId.slice(-4)}</h2><p>{state.notice ? 'Selected for this visit. Check the storage notice above.' : 'Remembered on this browser. Forget it when using a shared device.'}</p></div><div className="student-actions"><button type="button" onClick={() => clearStudent(false)}>Change student</button><button type="button" className="text-button" onClick={() => clearStudent(true)}>Forget this device</button></div></section>
+            <HoldDetailPanel controller={details} />
             <section className="applications" aria-labelledby="applications-heading" aria-busy={state.phase === 'loading'}>
               <div className="applications-heading"><div><p className="eyebrow">YOUR PROGRESS</p><h2 id="applications-heading">Your applications</h2></div><button type="button" disabled={state.phase === 'loading'} onClick={() => { void session.refresh() }}>Refresh</button></div>
               {state.phase === 'loading' && <p className="muted" role="status">Loading applications…</p>}
               {state.error && <div className="error-panel" role="alert"><p>{state.error}</p><button type="button" onClick={() => { void session.refresh() }}>Try again</button></div>}
               {state.phase === 'ready' && state.applications.length === 0 && <div className="empty-state"><h3>No applications yet</h3><p>Applications for this student will appear here.</p></div>}
-              {state.applications.length > 0 && <ul className="application-list">{state.applications.map(application => <li key={application.holdId}><div><h3>{application.className}</h3><p>{application.status === 'HELD' ? 'Hold expires' : 'Original hold deadline'}: <time dateTime={application.expiresAt}>{new Date(application.expiresAt).toLocaleString()}</time></p></div><span className={`status status-${application.status.toLowerCase()}`}>{statusNames[application.status]}</span></li>)}</ul>}
+              {state.applications.length > 0 && <ul className="application-list">{state.applications.map(application => <li key={application.holdId}><div><h3>{application.className}</h3><p>{application.status === 'HELD' ? 'Hold expires' : 'Original hold deadline'}: <time dateTime={application.expiresAt}>{new Date(application.expiresAt).toLocaleString()}</time></p></div><div className="application-actions"><span className={`status status-${application.status.toLowerCase()}`}>{statusNames[application.status]}</span><button type="button" onClick={() => { void details.open(application) }} aria-label={`View application for ${application.className}`}>View application</button></div></li>)}</ul>}
             </section>
           </>
         )}
-        <ClassPanel student={session} />
+        <ClassPanel student={session} catalog={catalog} onApplied={application => { void details.open(application) }} />
         <p className="portal-footnote">Application status is confirmed by the school’s admission system.</p>
       </main>
       <footer>School admissions <span>Simple beginnings. Clear next steps.</span></footer>

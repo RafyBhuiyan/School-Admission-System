@@ -14,12 +14,13 @@
 - Frontend runtime configuration and shared typed API client for all eight operations, exposed through a React provider/hook.
 - Student identification with 17-digit validation, localStorage restoration, automatic application retrieval, and Change/Forget actions that clear stale state and pending requests.
 - Class creation with field validation, seat-summary cards, four-second visible-page polling, and Apply with automatic count/history refresh.
+- Application details with a server-synchronized countdown, 2.5-second active-detail polling, simulated confirmation, cancellation, and backend verification at estimated expiry.
 
-Payment/cancellation/detail-countdown UI controls and Docker Compose packaging remain unimplemented. The portal currently supports identification, read-only application history, class creation, and applying.
+Docker Compose packaging remains unimplemented. Broader UI verification and browser-process restart checks are still pending.
 
 ## Verification
 
-Verified locally on 10 November 2026 against PostgreSQL 18:
+Backend verified locally on 10 November 2026 against PostgreSQL 18. Latest frontend checks and detail-action browser verification ran on 11 November 2026:
 
 | Check | Result |
 | --- | --- |
@@ -41,6 +42,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Frontend API/configuration | 30 passed, zero failed/skipped; all eight methods, headers, error normalization, cancellation/timeouts, and runtime changes through a real HTTP server |
 | Student session | 19 passed, zero failed/skipped; strict validation, persistence/reopen, switching/forgetting, aborted/stale requests, storage failures, retries, and cross-tab restoration |
 | Class catalog | 21 passed, zero failed/skipped; input boundaries, polling/visibility, stale reads, creation errors, apply guards, duplicate submissions, identity changes, conflicts, and successful refreshes |
+| Application details | 23 passed, zero failed/skipped; server timing/transit delay, zero-time verification, terminal states, polling, confirmation/cancellation, duplicate actions, conflicts, ownership, lost responses, read failures, visibility, and selection races |
 | Frontend build/lint | Passed; production bundle includes a separate runtime config file |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
@@ -69,8 +71,10 @@ A separate five-second hold expires while the API is stopped. Before restart it 
 
 The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/lifecycle-restart.trx`. No hosted CI run was performed during this verification. Broader load, multi-process allocation concurrency, and container deployment checks remain outstanding.
 
-The frontend loads `config.json` before rendering and initializes the shared API provider. Its client sends student IDs only in headers, omits credentials, disables caching/redirects, supports aborts and a 15-second timeout, and normalizes Problem Details without exposing raw failure bodies. Mutations are not automatically retried. All 70 frontend tests passed; build and lint also passed. The backend was unchanged and its 220-case result above is from the preceding backend verification.
+The frontend loads `config.json` before rendering and initializes the shared API provider. Its client sends student IDs only in headers, omits credentials, disables caching/redirects, supports aborts and a 15-second timeout, and normalizes Problem Details without exposing raw failure bodies. Mutations are not automatically retried. All 93 frontend tests passed; build and lint also passed. The backend was unchanged and its 220-case result above is from the preceding backend verification.
 
 Identity browser verification used a local synthetic API fixture: short input was rejected, a valid leading-zero identifier loaded history, reload/tab reopen restored it automatically, changing students cleared old history, and forgetting cleared both open tabs and remained cleared after reload. A [synthetic preview](evidence/student-portal.png) was saved with only the final four identifier digits visible.
 
 Class browser verification then used the real ASP.NET API with an isolated PostgreSQL 18 database. Empty form fields showed inline errors; a one-seat class was created with correct counts; a trimmed duplicate name showed the backend 409 message. A synthetic 17-digit student applied, the stored hold appeared in history, held/available counts changed to 1/0, and reapplication was disabled. A second class created outside the browser appeared through polling without a manual refresh. The [catalog preview](evidence/class-catalog.png) preserves the observed result. The temporary API/frontend and database container were stopped/removed and the normal runtime configuration restored. Mobile viewport checks and a full browser-process restart remain unverified.
+
+Detail browser verification used a fresh isolated database, the real API/expiration worker, and 20-second holds. Applying opened details with a decreasing countdown. Simulated confirmation produced CONFIRMED in details/history and increased confirmed occupancy; cancellation produced CANCELLED and released its seat. Another hold became EXPIRED automatically without reload, removed the action buttons, updated history, and restored availability. The [countdown preview](evidence/hold-details.png) shows only synthetic data. Forget cleared the test selection; the owned services/container were removed and the default runtime configuration restored. Clock-skew, pending-zero, transport failure, and request-race scenarios were verified by automated controller tests rather than browser fault injection.

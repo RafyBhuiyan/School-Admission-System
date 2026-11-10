@@ -1,12 +1,11 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { SubmitEvent } from 'react'
-import { useApi } from './apiContext.ts'
-import { createClassCatalog } from './classCatalog.ts'
+import type { createClassCatalog } from './classCatalog.ts'
+import type { StudentHold } from './api/types.ts'
 import type { createStudentSession } from './studentSession.ts'
 
-export function ClassPanel({ student }: { student: ReturnType<typeof createStudentSession> }) {
-  const api = useApi()
-  const [catalog] = useState(() => createClassCatalog(api, student))
+export function ClassPanel({ student, catalog, onApplied }: { student: ReturnType<typeof createStudentSession>;
+  catalog: ReturnType<typeof createClassCatalog>; onApplied: (application: StudentHold) => void }) {
   const state = useSyncExternalStore(catalog.subscribe, catalog.getSnapshot)
   const identity = useSyncExternalStore(student.subscribe, student.getSnapshot)
   const [adminOpen, setAdminOpen] = useState(false)
@@ -22,6 +21,13 @@ export function ClassPanel({ student }: { student: ReturnType<typeof createStude
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
     if (await catalog.create(name, seats)) { setName(''); setSeats('') }
+  }
+  async function apply(classId: string, className: string) {
+    if (await catalog.apply(classId)) {
+      const created = catalog.getSnapshot().createdHold
+      if (created && created.studentId === student.getSnapshot().studentId) onApplied({ holdId: created.holdId,
+        classId: created.classId, className, status: created.status, expiresAt: created.expiresAt })
+    }
   }
   return <section className="class-section" aria-labelledby="class-heading">
     <div className="applications-heading"><div><p className="eyebrow">FIND A PLACE</p><h2 id="class-heading">Admission classes</h2></div><div className="catalog-actions"><button type="button" disabled={state.loading} onClick={() => { void catalog.refresh() }}>Refresh classes</button><button type="button" aria-expanded={adminOpen} aria-controls="create-class" onClick={() => setAdminOpen(!adminOpen)}>{adminOpen ? 'Close class form' : 'Create a class'}</button></div></div>
@@ -42,7 +48,7 @@ export function ClassPanel({ student }: { student: ReturnType<typeof createStude
       const disabled = !identity.studentId || identity.phase === 'loading' || row.availableSeats <= 0 || existing || !!state.applyingId || !!state.error
       return <li key={row.id} className="class-card"><div className="class-card-title"><h3>{row.name}</h3><span className={`status ${row.availableSeats > 0 ? 'status-confirmed' : 'status-expired'}`}>{row.availableSeats > 0 ? 'Seats available' : 'Full'}</span></div>
         <dl className="seat-counts"><div><dt>Total</dt><dd>{row.totalSeats}</dd></div><div><dt>Held</dt><dd>{row.heldSeats}</dd></div><div><dt>Confirmed</dt><dd>{row.confirmedSeats}</dd></div><div className="available-count"><dt>Available</dt><dd>{row.availableSeats}</dd></div></dl>
-        <button type="button" className="primary" disabled={disabled} aria-label={existing ? `Already applied for ${row.name}` : row.availableSeats <= 0 ? `No seats available for ${row.name}` : `Apply for ${row.name}`} onClick={() => { void catalog.apply(row.id) }}>{state.applyingId === row.id ? 'Applying…' : existing ? 'Already applied' : row.availableSeats <= 0 ? 'No seats available' : 'Apply for a seat'}</button>
+        <button type="button" className="primary" disabled={disabled} aria-label={existing ? `Already applied for ${row.name}` : row.availableSeats <= 0 ? `No seats available for ${row.name}` : `Apply for ${row.name}`} onClick={() => { void apply(row.id, row.name) }}>{state.applyingId === row.id ? 'Applying…' : existing ? 'Already applied' : row.availableSeats <= 0 ? 'No seats available' : 'Apply for a seat'}</button>
       </li>
     })}</ul>
     <p className="field-help catalog-note">Availability updates every few seconds. A seat is reserved only after your application succeeds.</p>

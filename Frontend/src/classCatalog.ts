@@ -1,6 +1,6 @@
 import { ApiError } from './api/errors.ts'
 import type { AdmissionApi } from './api/client.ts'
-import type { ClassSummary, CreateClassRequest } from './api/types.ts'
+import type { ClassSummary, CreateClassRequest, CreatedHold } from './api/types.ts'
 import type { createStudentSession } from './studentSession.ts'
 
 export function validateClassInput(name: string, seats: string): { value?: CreateClassRequest; errors: Record<string, string> } {
@@ -18,6 +18,7 @@ export interface CatalogState {
   classes: ClassSummary[]; loading: boolean; error: string | null
   creating: boolean; applyingId: string | null; message: string | null; mutationError: string | null
   fieldErrors: Record<string, string>
+  createdHold: CreatedHold | null
 }
 type StudentSession = ReturnType<typeof createStudentSession>
 type CatalogApi = Pick<AdmissionApi, 'getClasses' | 'createClass' | 'createHold'>
@@ -26,7 +27,7 @@ interface Scheduler { set: (callback: () => void, delay: number) => unknown; cle
 export function createClassCatalog(api: CatalogApi, student: StudentSession, scheduler: Scheduler = {
   set: (callback, delay) => setTimeout(callback, delay), clear: handle => clearTimeout(handle as ReturnType<typeof setTimeout>),
 }) {
-  let state: CatalogState = { classes: [], loading: false, error: null, creating: false, applyingId: null, message: null, mutationError: null, fieldErrors: {} }
+  let state: CatalogState = { classes: [], loading: false, error: null, creating: false, applyingId: null, message: null, mutationError: null, fieldErrors: {}, createdHold: null }
   const listeners = new Set<() => void>()
   let attached = false
   let visible = true
@@ -71,7 +72,7 @@ export function createClassCatalog(api: CatalogApi, student: StudentSession, sch
         selected = id
         applyVersion++
         application?.abort()
-        update({ applyingId: null, message: null, mutationError: null })
+        update({ applyingId: null, message: null, mutationError: null, createdHold: null })
       }
     })
     await refresh()
@@ -133,9 +134,9 @@ export function createClassCatalog(api: CatalogApi, student: StudentSession, sch
     application = controller
     update({ applyingId: classId, message: null, mutationError: null })
     try {
-      await api.createHold(classId, snapshot.studentId, { signal: controller.signal })
+      const createdHold = await api.createHold(classId, snapshot.studentId, { signal: controller.signal })
       if (!attached || version !== applyVersion || controller.signal.aborted) return false
-      update({ applyingId: null, message: 'Application created. A seat is temporarily held for this student.' })
+      update({ applyingId: null, createdHold, message: 'Application created. A seat is temporarily held for this student.' })
       await Promise.all([refresh(), student.refresh()])
       return true
     } catch (error) {
