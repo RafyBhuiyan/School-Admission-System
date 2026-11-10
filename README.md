@@ -73,7 +73,7 @@ $env:SCHEMA_TEST_CONNECTION_STRING = "Host=localhost;Port=5432;Database=postgres
 dotnet test SchoolAdmission.slnx --configuration Release
 ```
 
-Tests create and remove their own databases. Without this variable, database tests are skipped. Coverage includes complete API workflows, validation, migrations, expiry, failed-write rollback, and competing requests for the last seat. See the [integration coverage matrix](docs/TESTING.md).
+Tests create and remove their own databases. Without this variable, database tests are skipped. Coverage includes API workflows, validation, migrations, expiry, failed-write rollback, backend-process restarts, and competing requests for the last seat. See the [integration coverage matrix](docs/TESTING.md).
 
 On PostgreSQL 18, **100 concurrent requests for 10 seats produced 10 created holds and 90 conflicts**. With three held seats and two confirmations already present, the same burst produced five holds and 95 conflicts. Persisted occupancy was exactly 10 in both cases. This uses one in-process API host with a 20-connection database pool; [actual test output](docs/evidence/capacity-concurrency.txt) is preserved.
 

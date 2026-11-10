@@ -21,7 +21,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Check | Result |
 | --- | --- |
 | Release build | Passed with zero warnings or errors |
-| Backend suite | 218 passed, zero failed, zero skipped |
+| Backend suite | 220 passed, zero failed, zero skipped |
 | Foundation | 33 cases covering configuration, validation, CORS, errors, and Swagger |
 | Schema | 11 cases covering mappings, constraints, indexes, and migration rollback/reapply |
 | Class API | 23 cases covering response contracts, validation, errors, and duplicate-name races |
@@ -34,6 +34,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Student applications | 19 cases covering exact fields, all statuses, class/history joins, ordering, student isolation, empty results, header validation, expiry boundaries, live transaction time, lifecycle flow, and OpenAPI |
 | HTTP workflows/database failures | 7 cases covering all eight operations with the real worker, identifier formats, elapsed-time expiry/reapplication, and atomic rollback/sanitized errors after rejected database writes |
 | Capacity bursts | 2 cases sending 100 distinct-student requests to a 10-seat class, empty and partially occupied; persisted results match available capacity |
+| Backend restart | 2 cases terminating and restarting real API processes, checking persisted history/timestamps, retries/ownership, terminal-state protection, and worker catch-up after downtime |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
 
@@ -55,4 +56,8 @@ The capacity tests observed 20 blocked allocation requests before releasing the 
 
 Aggregate metrics were extracted directly from the successful TRX results into [preserved concurrency output](evidence/capacity-concurrency.txt). The raw report remains ignored to avoid committing machine-specific logs. No production-code or schema changes were required.
 
-The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/concurrency.trx`. No hosted CI run was performed during this verification. Broader load and deployment checks remain outstanding.
+Restart tests launch the compiled API in Production mode on ephemeral loopback ports, terminate the owned OS process, and start a new one against the same database. Snapshots include IDs, student IDs, statuses, and all application timestamps. Class names/capacity/timestamps, list/details, ownership checks, and idempotent confirmation/cancellation remain correct after restart. Historical confirmed/cancelled deadlines are advanced directly in the fixture to avoid waiting ten minutes. An offline-seeded overdue HELD row proves a restarted worker cycle runs without changing the pre-existing terminal rows.
+
+A separate five-second hold expires while the API is stopped. Before restart it remains stored as HELD; after restart, database-only polling observes EXPIRED before any student request. Another student then obtains the released seat, while the expired application remains historical and cannot be confirmed/cancelled. Existing microsecond-boundary, post-lock-time, ownership, and retry suites passed alongside these additions. No production or schema changes were required.
+
+The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/lifecycle-restart.trx`. No hosted CI run was performed during this verification. Broader load, multi-process allocation concurrency, and container deployment checks remain outstanding.
