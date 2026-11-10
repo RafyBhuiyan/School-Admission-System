@@ -4,7 +4,19 @@ A school admission application with class management, temporary seat holds, and 
 
 Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds. The portal supports student identification, application history, class creation, seat availability, applying, and confirming or cancelling a hold with simulated payment.
 
-## Run locally
+## Run with Docker
+
+Install Docker with the Compose plugin; no local .NET, Node.js, or PostgreSQL installation is needed. Copy `.env.example` to `.env` if you do not already have one, set `POSTGRES_PASSWORD`, then run from the repository root:
+
+```powershell
+docker compose up --build --wait --wait-timeout 120
+```
+
+Open the portal at `http://localhost:5173`; the API is at `http://localhost:8080`. Startup waits for PostgreSQL, runs the migration bundle once, waits for API readiness, then starts the frontend. The `migrator` service finishing with exit code 0 is expected.
+
+Use `docker compose down` to stop the stack while retaining the named database volume. Compose recreation persistence still awaits its dedicated verification. See [container configuration and verification](docs/CONTAINERS.md) for settings, health checks, and troubleshooting.
+
+## Run locally for development
 
 Install the .NET 10 SDK, PostgreSQL 18, and Node.js 22.12+ with npm. Create a local PostgreSQL database and account, then run from the repository root:
 
@@ -39,22 +51,28 @@ docker build --file Backend/SchoolAdmission.Api/Dockerfile --tag school-admissio
 docker build --tag school-admission-frontend:local Frontend
 ```
 
-Both listen on container port 8080. The frontend image generates its public configuration from `API_BASE_URL` at startup; the backend image includes an explicit migration command. See [container setup and verification](docs/CONTAINERS.md) for running them against a database. Docker Compose startup remains pending.
+Both listen on container port 8080. The frontend image generates its public configuration from `API_BASE_URL` at startup; the backend image includes an explicit migration command. See [container setup](docs/CONTAINERS.md) for standalone image use.
 
 ## Configuration
 
-Export backend settings as environment variables. The repository-root `.env` file is not loaded automatically; `.env.example` documents the settings.
+Compose reads the root `.env` file. Local .NET execution requires exported environment variables and does not load that file automatically. `.env.example` separates shared, Compose, and local settings.
 
 | Variable | Purpose |
 | --- | --- |
-| `ConnectionStrings__DefaultConnection` | Required PostgreSQL connection string |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Compose database settings; password is required |
+| `FRONTEND_PORT` | Compose frontend host port; defaults to 5173 |
+| `API_HTTP_PORT`, `FRONTEND_HTTP_PORT` | Internal listener ports; default 8080, shared with probes and container port mappings |
+| `FRONTEND_ORIGIN` | Optional Compose CORS origin override; otherwise derived from the frontend port |
+| `API_BASE_URL` | Browser-facing API URL written by frontend container startup; defaults to `http://localhost:8080` |
+| `ConnectionStrings__DefaultConnection` | Local API connection string; Compose generates this setting |
 | `HOLD_DURATION_SECONDS` | Positive integer hold lifetime; defaults to 600 seconds |
 | `Expiration__IntervalMilliseconds` | Expiration polling interval, 100–60000 ms; defaults to 1000 |
 | `Expiration__BatchSize` | Maximum holds processed per cycle, 1–1000; defaults to 100 |
-| `Cors__AllowedOrigins__0` | Allowed frontend origin; defaults to `http://localhost:5173` |
-| `ASPNETCORE_URLS` | Listening address when running without the local launch profile |
+| `Cors__AllowedOrigins__0` | Local API allowed origin; Compose uses `FRONTEND_ORIGIN` |
+| `ASPNETCORE_URLS` | Local API listening address; not passed through by Compose |
+| `HealthCheck__BaseUrl` | Optional internal API health-probe base address; otherwise derived from listener configuration |
 
-Configuration is validated at startup. Additional allowed origins use `Cors__AllowedOrigins__1`, `Cors__AllowedOrigins__2`, and so on.
+Compose constructs the internal database connection using the `postgres` service name and supplies the password separately. It publishes the API on localhost port 8080 and does not publish the database. Configuration is validated at startup. For local .NET execution, additional allowed origins use `Cors__AllowedOrigins__1`, `Cors__AllowedOrigins__2`, and so on.
 
 ## API
 

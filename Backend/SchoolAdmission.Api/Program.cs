@@ -8,7 +8,28 @@ using SchoolAdmission.Api.Middleware;
 using SchoolAdmission.Api.Services;
 using SchoolAdmission.Api.BackgroundServices;
 
-var builder = WebApplication.CreateBuilder(args);
+var healthCheck = args is ["--healthcheck"];
+var builder = WebApplication.CreateBuilder(healthCheck ? [] : args);
+
+if (healthCheck)
+{
+    // Probe the normal database-backed route without starting another API host.
+    try
+    {
+        using var client = new HttpClient(new SocketsHttpHandler { UseProxy = false, AllowAutoRedirect = false })
+        {
+            BaseAddress = ApiHealthProbe.ResolveBaseAddress(builder.Configuration),
+            Timeout = TimeSpan.FromSeconds(2)
+        };
+        using var response = await client.GetAsync("classes", HttpCompletionOption.ResponseHeadersRead);
+        Environment.ExitCode = response.IsSuccessStatusCode ? 0 : 1;
+    }
+    catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or InvalidOperationException or ArgumentException or FormatException)
+    {
+        Environment.ExitCode = 1;
+    }
+    return;
+}
 
 builder.Services.AddOptions<DatabaseOptions>()
     .BindConfiguration(DatabaseOptions.SectionName)

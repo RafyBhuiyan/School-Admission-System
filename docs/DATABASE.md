@@ -66,6 +66,8 @@ dotnet ef database update --project Backend/SchoolAdmission.Api
 
 This explicitly applies `20261108192613_InitialAdmissionSchema`. Starting the API does not automatically apply migrations. The backend image includes `/app/migrate` for controlled initialization before API startup; see [container setup](CONTAINERS.md).
 
+Root Compose startup waits for PostgreSQL health, runs a single `migrator` service, then allows the API to start. PostgreSQL 18 data lives in the `postgres-data` named volume mounted at `/var/lib/postgresql`. Ordinary `docker compose down` retains it; the recreation/persistence workflow is still awaiting its dedicated verification.
+
 Check the model snapshot and generate a reviewable, idempotent SQL script:
 
 ```powershell

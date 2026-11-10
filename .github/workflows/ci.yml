@@ -98,6 +98,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      - name: Validate Compose configuration
+        env:
+          POSTGRES_PASSWORD: ci-compose-validation-password
+        run: docker compose config --quiet
+
       - name: Build API image
         run: docker build --file Backend/SchoolAdmission.Api/Dockerfile --tag school-admission-api:ci .
 

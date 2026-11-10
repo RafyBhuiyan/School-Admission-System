@@ -1,0 +1,77 @@
+name: school-admission
+
+x-database-environment: &database-environment
+  ConnectionStrings__DefaultConnection: "Host=postgres;Database=${POSTGRES_DB:-school_admission};Username=${POSTGRES_USER:-school_admission}"
+  PGPASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the environment}"
+
+services:
+  postgres:
+    image: postgres:18@sha256:e3d24f6906d0760bf4da0dae872415391ededefad23fd471c47dc53b0ddf3c42
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-school_admission}"
+      POSTGRES_USER: "${POSTGRES_USER:-school_admission}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the environment}"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  migrator:
+    image: school-admission-api:local
+    pull_policy: never
+    entrypoint: ["/app/migrate"]
+    environment: *database-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    image: school-admission-api:local
+    build:
+      context: .
+      dockerfile: Backend/SchoolAdmission.Api/Dockerfile
+    environment:
+      <<: *database-environment
+      ASPNETCORE_HTTP_PORTS: "${API_HTTP_PORT:-8080}"
+      HealthCheck__BaseUrl: "${HealthCheck__BaseUrl:-}"
+      HOLD_DURATION_SECONDS: "${HOLD_DURATION_SECONDS:-600}"
+      Expiration__IntervalMilliseconds: "${Expiration__IntervalMilliseconds:-1000}"
+      Expiration__BatchSize: "${Expiration__BatchSize:-100}"
+      Cors__AllowedOrigins__0: "${FRONTEND_ORIGIN:-http://localhost:${FRONTEND_PORT:-5173}}"
+    ports:
+      - "127.0.0.1:8080:${API_HTTP_PORT:-8080}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "dotnet", "SchoolAdmission.Api.dll", "--healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    image: school-admission-frontend:local
+    build:
+      context: Frontend
+    environment:
+      API_BASE_URL: "${API_BASE_URL:-http://localhost:8080}"
+      FRONTEND_HTTP_PORT: "${FRONTEND_HTTP_PORT:-8080}"
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-5173}:${FRONTEND_HTTP_PORT:-8080}"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:

@@ -27,6 +27,8 @@ The browser fetches this file with caching disabled before rendering the app. Th
 
 Vite copies the file into `dist/config.json`. For an already-built deployment, replace that file and reload the browser; JavaScript does not need to be rebuilt. Exporting `API_BASE_URL` in a shell does not change local Vite configuration. The production container generates this file from its `API_BASE_URL` environment variable at startup, then Nginx serves it without caching. The file is public and must contain no secrets. See [container setup](../docs/CONTAINERS.md) for the build context, port mapping, and health check.
 
+When the image starts without an `API_BASE_URL` override, it retains the same default copied from `public/config.json`. `FRONTEND_HTTP_PORT` controls both the Nginx template and its internal health probe; the browser's frontend host port is configured separately.
+
 Missing or invalid configuration displays a startup error rather than silently selecting a different backend.
 
 ## Shared requests
