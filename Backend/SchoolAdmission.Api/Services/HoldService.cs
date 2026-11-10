@@ -13,6 +13,26 @@ namespace SchoolAdmission.Api.Services;
 
 public sealed class HoldService(AppDbContext dbContext, IOptions<HoldOptions> options)
 {
+    public async Task<List<StudentHoldResponse>> GetForStudentAsync(string studentId, CancellationToken cancellationToken)
+    {
+        var databaseTime = dbContext.Database.SqlQuery<DateTime>($"SELECT clock_timestamp() AS \"Value\"");
+        var applications = await (from now in databaseTime
+                                  from hold in dbContext.AdmissionHolds
+                                  where hold.StudentId == studentId
+                                  orderby hold.CreatedAt descending, hold.Id
+                                  select new
+                                  {
+                                      hold.Id,
+                                      hold.ClassId,
+                                      ClassName = hold.AdmissionClass.Name,
+                                      Status = hold.Status == AdmissionHoldStatus.HELD && hold.ExpiresAt <= now
+                                          ? AdmissionHoldStatus.EXPIRED : hold.Status,
+                                      hold.ExpiresAt
+                                  }).ToListAsync(cancellationToken);
+        return applications.Select(hold => new StudentHoldResponse(
+            hold.Id, hold.ClassId, hold.ClassName, hold.Status.ToString(), hold.ExpiresAt)).ToList();
+    }
+
     public async Task<CancelHoldOutcome> CancelAsync(Guid holdId, string studentId, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);

@@ -10,8 +10,9 @@
 - Automatic expiration in bounded batches, using fresh scoped services, database time, conditional updates, and skipped row locks.
 - Simulated-payment confirmation with ownership checks, hold locking, fresh-time expiry, and idempotent retries.
 - Cancellation with ownership checks, terminal-state protection, retained history, and released capacity for reapplication.
+- Student application listing with header-based filtering, class names, effective expiry, and retained history across classes.
 
-My Applications, frontend workflows, and Docker Compose packaging remain unimplemented. The React application is a starter.
+Frontend workflows and Docker Compose packaging remain unimplemented. The React application is a starter.
 
 ## Verification
 
@@ -20,7 +21,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Check | Result |
 | --- | --- |
 | Release build | Passed with zero warnings or errors |
-| Backend suite | 190 passed, zero failed, zero skipped |
+| Backend suite | 209 passed, zero failed, zero skipped |
 | Foundation | 33 cases covering configuration, validation, CORS, errors, and Swagger |
 | Schema | 11 cases covering mappings, constraints, indexes, and migration rollback/reapply |
 | Class API | 23 cases covering response contracts, validation, errors, and duplicate-name races |
@@ -30,6 +31,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Expiration | 6 cases covering empty/repeated batches, state/timestamp preservation, batch limits/order, locked rows, concurrent batches, and hosted workers without HTTP requests |
 | Confirmation | 28 cases covering the exact response, ownership/header/body checks, retries, committed expiry, microsecond boundaries, concurrent confirmations, lock waits, and expiration-worker contention |
 | Cancellation | 26 cases covering 204/empty body, retries, history, seat reuse, ownership/header checks, error paths, exact expiry, lock waits, queued retries, and confirmation/expiration races |
+| Student applications | 19 cases covering exact fields, all statuses, class/history joins, ordering, student isolation, empty results, header validation, expiry boundaries, live transaction time, lifecycle flow, and OpenAPI |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
 
@@ -43,4 +45,6 @@ Eight queued confirmations returned the same successful result with one stored a
 
 Cancellation tests reallocate a released seat both to the original student and to another student, with the old row retained. Eight queued cancellations return 204 and retain one history row. Controlled races let confirmation, cancellation, or expiration acquire the lock first, then verify a competing operation returns 409 and cannot overwrite the committed terminal state. Expiry during a cancellation lock wait is committed as EXPIRED before returning 409, without setting a cancellation timestamp.
 
-The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/cancellation.trx`. No hosted CI run was performed during this verification. Broader load and deployment checks remain outstanding.
+Student-list tests verify that header case and leading zeros are preserved, query parameters cannot override the selected student, history is retained across classes, and reads leave stored rows unchanged. Exact-boundary cases share one captured clock value across rows. A complete HTTP flow creates two applications, confirms one, cancels the other, and checks their final statuses in the list. OpenAPI covers all eight operations.
+
+The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/student-applications.trx`. No hosted CI run was performed during this verification. Broader load and deployment checks remain outstanding.

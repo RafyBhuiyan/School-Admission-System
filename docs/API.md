@@ -110,6 +110,26 @@ Cancellation locks the hold and verifies ownership before checking status or cha
 
 For a HELD row, fresh database time is read after the row lock. If `expires_at <= clock_timestamp()`, the service saves EXPIRED, commits, and returns 409 without setting `cancelled_at`. Otherwise it saves CANCELLED and `cancelled_at`, commits, and returns 204. Rows are retained with their original creation/expiry timestamps. A cancelled seat becomes available for another student or a new application by the same student. Confirmation, cancellation, and expiration coordinate through the hold row lock.
 
+## List a student's applications
+
+`GET /me/holds` requires one trimmed, non-empty `X-Student-Id` header of at most 64 characters. Example `200 OK` response:
+
+```json
+[
+  {
+    "holdId": "334b0c66-a05e-413b-b7d8-52baf2ac3158",
+    "classId": "10eeb2c5-54c4-4e4c-9f2c-dc197d5db560",
+    "className": "Class 6 - Morning Shift",
+    "status": "HELD",
+    "expiresAt": "2026-11-10T12:10:00Z"
+  }
+]
+```
+
+Each item contains exactly these five fields. The list includes all applications for that identifier across classes, including cancelled/expired history. Results are ordered by creation time descending, then hold UUID ascending for ties. No applications returns `[]`. Matching preserves case and leading zeros; query parameters do not select a student. Invalid or multiple header values return 400.
+
+A single EF query filters by student and joins class names, using one captured database clock value for expiry. An overdue HELD row is returned as EXPIRED immediately; terminal statuses and original expiry timestamps remain unchanged. Listing does not persist state changes. Responses disable caching and omit student IDs. The header identifies the student but does not authenticate them.
+
 ## Automatic expiration
 
 The expiration worker runs one bounded batch per interval, using database time. Defaults are 100 rows every 1000 ms, configurable with `Expiration__BatchSize` (1–1000) and `Expiration__IntervalMilliseconds` (100–60000). Locked rows are skipped and revisited on a later cycle. Only overdue HELD rows change; history and timestamps are retained. Failed batches are retried on the next cycle. Retrieval and seat summaries remain authoritative between cycles.
@@ -125,4 +145,4 @@ The expiration worker runs one bounded batch per interval, using database time. 
 
 Errors use `application/problem+json` with `status`, `title`, `instance`, and `traceId`; validation errors also include `errors`. Unexpected database/infrastructure failures remain generic 500 responses. Database exceptions and constraint names are not exposed in the response.
 
-Swagger UI is available in development at `http://localhost:8080/swagger/index.html`. My Applications is not implemented yet.
+Swagger UI is available in development at `http://localhost:8080/swagger/index.html` and documents all eight API operations.

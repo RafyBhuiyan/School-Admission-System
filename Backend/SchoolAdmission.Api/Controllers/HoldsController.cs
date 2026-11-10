@@ -10,6 +10,19 @@ namespace SchoolAdmission.Api.Controllers;
 
 public sealed class HoldsController(HoldService holdService) : ControllerBase
 {
+    [HttpGet("me/holds")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    [ProducesResponseType(typeof(List<StudentHoldResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<StudentHoldResponse>>> GetForStudent(
+        [FromHeader(Name = "X-Student-Id"), Required(ErrorMessage = "A student ID is required.")] string? studentId,
+        CancellationToken cancellationToken)
+    {
+        studentId = ValidateStudentId(studentId);
+        if (studentId is null) return ValidationProblem(ModelState);
+        return Ok(await holdService.GetForStudentAsync(studentId, cancellationToken));
+    }
+
     [HttpDelete("holds/{holdId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]

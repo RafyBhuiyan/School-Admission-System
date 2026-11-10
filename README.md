@@ -1,8 +1,8 @@
 # School Admission System
 
-A school admission application with class management, temporary seat holds, and PostgreSQL transactions protecting limited seats. The backend supports creating classes, viewing seat availability, applying for a hold, and checking its status.
+A school admission application with class management, temporary seat holds, and PostgreSQL transactions protecting limited seats. The backend supports creating classes, viewing availability, applying, confirming/cancelling holds, and reviewing a student's application history.
 
-Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds, confirmation simulates successful payment, and parents can cancel eligible holds. The frontend is currently a Vite starter; My Applications is not implemented yet.
+Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds, and confirmation simulates successful payment. The frontend is currently a Vite starter without API integration.
 
 ## Run locally
 
@@ -54,6 +54,7 @@ Configuration is validated at startup. Additional allowed origins use `Cors__All
 | GET | `/holds/{holdId}` | Retrieve current status, expiry, and database server time |
 | POST | `/holds/{holdId}/confirm` | Confirm an owned hold; requires `X-Student-Id` |
 | DELETE | `/holds/{holdId}` | Cancel an owned, eligible hold; requires `X-Student-Id` |
+| GET | `/me/holds` | List applications for `X-Student-Id`, including class names and current statuses |
 
 Hold creation accepts one trimmed student identifier of up to 64 characters. A database row lock protects capacity and duplicate checks. Retrieval reports an overdue hold as `EXPIRED` immediately, even if its stored status is still `HELD`.
 
