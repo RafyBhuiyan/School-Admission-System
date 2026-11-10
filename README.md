@@ -2,7 +2,7 @@
 
 A school admission application with class management, temporary seat holds, and PostgreSQL transactions protecting limited seats. The backend supports creating classes, viewing seat availability, applying for a hold, and checking its status.
 
-Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. The frontend is currently a Vite starter; confirmation, cancellation, automatic expiration, and My Applications are not implemented yet.
+Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds. The frontend is currently a Vite starter; confirmation, cancellation, and My Applications are not implemented yet.
 
 ## Run locally
 
@@ -36,6 +36,8 @@ Export backend settings as environment variables. The repository-root `.env` fil
 | --- | --- |
 | `ConnectionStrings__DefaultConnection` | Required PostgreSQL connection string |
 | `HOLD_DURATION_SECONDS` | Positive integer hold lifetime; defaults to 600 seconds |
+| `Expiration__IntervalMilliseconds` | Expiration polling interval, 100–60000 ms; defaults to 1000 |
+| `Expiration__BatchSize` | Maximum holds processed per cycle, 1–1000; defaults to 100 |
 | `Cors__AllowedOrigins__0` | Allowed frontend origin; defaults to `http://localhost:5173` |
 | `ASPNETCORE_URLS` | Listening address when running without the local launch profile |
 

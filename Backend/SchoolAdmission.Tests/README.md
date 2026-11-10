@@ -2,7 +2,7 @@
 
 This is an xUnit test project referencing `SchoolAdmission.Api`, not a second web application.
 
-`Integration/FoundationTests.cs` contains 27 foundation test cases using `WebApplicationFactory` and the actual request pipeline, including six invalid hold-duration settings. Test-only probe controllers are registered solely in the test host and are excluded from API documentation. No probe endpoints are included in the deployed API.
+`Integration/FoundationTests.cs` contains 33 foundation test cases using `WebApplicationFactory` and the actual request pipeline, including invalid hold-duration and expiration settings. Test-only probe controllers are registered solely in the test host and are excluded from API documentation. No probe endpoints are included in the deployed API.
 
 Coverage includes startup configuration errors, scoped PostgreSQL `AppDbContext` registration, allowed/disallowed CORS origins, automatic DTO and JSON validation, sanitized exceptions, fallback 404s, and development-only Swagger/OpenAPI.
 
@@ -16,9 +16,11 @@ The foundation tests supply synthetic configuration and do not open a database c
 
 `Integration/HoldRetrievalTests.cs` adds 16 cases covering all four statuses with past/future expiry, the exact expiry boundary, fresh database time inside an existing transaction, unchanged stored data, missing/malformed IDs, creation-to-retrieval flow, public access, and OpenAPI. Responses include database `serverTime`, omit the student identifier, and disable caching. Boundary cases share a test-only fixed-clock interceptor with the summary tests; live-clock cases do not use it.
 
-Set `SCHEMA_TEST_CONNECTION_STRING` to a test-server account with `CREATE DATABASE` permission. Each test class gets a uniquely named database, applies the migration, and drops its own database afterward. API and query cases reset only that owned database between cases. Database-backed cases are explicitly skipped when the variable is absent. GitHub Actions provides a PostgreSQL 18 service and runs all 124 cases. See [database verification](../../docs/DATABASE.md#real-postgresql-schema-checks) for setup.
+`Integration/HoldExpirationTests.cs` adds six cases for repeat/empty batches, overdue-only transitions, unchanged timestamps, oldest-first bounded processing, skipped locks/status changes, concurrent batches, and real hosted workers. Two hosts expire rows across cycles without HTTP requests. Most endpoint tests remove only the expiration hosted-service registration to keep seeded states deterministic; expiration tests enable it explicitly.
 
-Current races cover hold creation; broader lifecycle/load coverage, confirmation/cancellation/worker paths, and deployment to separate processes remain untested.
+Set `SCHEMA_TEST_CONNECTION_STRING` to a test-server account with `CREATE DATABASE` permission. Each test class gets a uniquely named database, applies the migration, and drops its own database afterward. API and query cases reset only that owned database between cases. Database-backed cases are explicitly skipped when the variable is absent. GitHub Actions provides a PostgreSQL 18 service and runs all 136 cases. See [database verification](../../docs/DATABASE.md#real-postgresql-schema-checks) for setup.
+
+Current races cover hold creation and expiration batches; broader lifecycle/load coverage, confirmation/cancellation races, and deployment to separate processes remain untested.
 
 Run from the repository root:
 

@@ -12,6 +12,20 @@ namespace SchoolAdmission.Tests.Integration;
 public sealed class FoundationTests
 {
     [Theory]
+    [InlineData("Expiration:IntervalMilliseconds", "0")]
+    [InlineData("Expiration:IntervalMilliseconds", "99")]
+    [InlineData("Expiration:IntervalMilliseconds", "60001")]
+    [InlineData("Expiration:BatchSize", "0")]
+    [InlineData("Expiration:BatchSize", "-1")]
+    [InlineData("Expiration:BatchSize", "1001")]
+    public void InvalidExpirationConfigurationFailsStartup(string key, string value)
+    {
+        using var factory = new FoundationApiFactory(overrides: new Dictionary<string, string?> { [key] = value });
+        var exception = Assert.Throws<OptionsValidationException>(() => factory.CreateClient());
+        Assert.Contains(key, exception.Message);
+    }
+
+    [Theory]
     [InlineData("0")]
     [InlineData("-1")]
     [InlineData("")]

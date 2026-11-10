@@ -65,7 +65,7 @@ The header is trimmed, required, and limited to 64 characters after trimming. Ca
 
 `HOLD_DURATION_SECONDS` defaults to 600 when unset. Invalid, nonpositive, or over-32-bit integer settings fail startup. Creation uses a read-committed transaction and a parameterized `SELECT ... FOR UPDATE` on the class row. After locking, it captures PostgreSQL `clock_timestamp()`, conditionally expires overdue `HELD` rows in that class, checks the student's existing active/confirmed application, counts occupied seats, and inserts only if capacity remains. Cleanup, the new hold, and the captured-time-plus-duration expiry commit together. EF Core handles the cleanup, checks, and insertion.
 
-Expired/cancelled applications remain in history, and reapplication creates a new hold ID. Duplicate active/confirmed applications and full classes return 409. Failed allocation rolls back the transaction, including its cleanup. Overdue rows still do not occupy seats in summaries; the background expiration worker is not implemented yet. A student may apply to different classes.
+Expired/cancelled applications remain in history, and reapplication creates a new hold ID. Duplicate active/confirmed applications and full classes return 409. Failed allocation rolls back the transaction, including its cleanup. Overdue rows immediately stop occupying seats in summaries; a background worker also persists their EXPIRED status without a student request. A student may apply to different classes.
 
 ## Retrieve a hold
 
@@ -84,6 +84,10 @@ Expired/cancelled applications remain in history, and reapplication creates a ne
 Allowed statuses are `HELD`, `CONFIRMED`, `EXPIRED`, and `CANCELLED`. If a stored `HELD` row has `expiresAt <= serverTime`, the response reports `EXPIRED` immediately. Other statuses remain unchanged, regardless of their historical expiry. A single EF query captures `clock_timestamp()` for both the expiry comparison and `serverTime`. Timestamps are UTC.
 
 Reads preserve the stored status and all timestamps. The response omits the student ID and uses `Cache-Control: no-store, no-cache` so clients can poll for fresh state. A supplied student header does not restrict access: this is a public status endpoint, and UUIDs are not authentication. Unknown holds return 404; malformed UUIDs return 400.
+
+## Automatic expiration
+
+The expiration worker runs one bounded batch per interval, using database time. Defaults are 100 rows every 1000 ms, configurable with `Expiration__BatchSize` (1–1000) and `Expiration__IntervalMilliseconds` (100–60000). Locked rows are skipped and revisited on a later cycle. Only overdue HELD rows change; history and timestamps are retained. Failed batches are retried on the next cycle. Retrieval and seat summaries remain authoritative between cycles.
 
 ## Errors
 
