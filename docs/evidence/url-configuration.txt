@@ -1,0 +1,32 @@
+Configurable probe verification - 11 November 2026
+Docker Desktop Linux/amd64; unique isolated Compose project.
+24 API address-resolution regressions + 33 foundation cases: 57 passed, 0 failed, 0 skipped.
+
+Final images built successfully and reached healthy states with non-default internal listeners.
+The API public host port stayed 8080 while its internal listener was 19080.
+Nginx and its health probe shared internal listener port 19081.
+Actual runtime checks:
+{
+  "ApiInternalPort": 19080,
+  "FrontendInternalPort": 19081,
+  "DerivedProbeExit": 0,
+  "OverrideProbeExit": 0,
+  "UnreachableOverrideExit": 1,
+  "FrontendProbeExit": 0,
+  "ApiHttp": 200,
+  "AllowedOrigin": [
+    "http://localhost:18081"
+  ],
+  "FrontendIndexHttp": 200,
+  "SpaFallbackHttp": 200,
+  "MissingAssetHttp": 404,
+  "BrowserApiBaseUrl": "http://localhost:8080"
+}
+
+
+Standalone frontend: unset API_BASE_URL retained Frontend/public/config.json.
+Runtime API URL overrides and JSON quote/backslash escaping: passed.
+Invalid frontend ports (zero, out of range, oversized integer, text): rejected.
+Initial Nginx template directory ownership error: corrected, rebuilt, and verified healthy.
+Full 244-case backend and 115-case frontend suites were not rerun here.
+Root .env left unchanged; disposable stack removed after checks.

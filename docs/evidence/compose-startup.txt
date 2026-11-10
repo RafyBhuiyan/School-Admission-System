@@ -1,0 +1,33 @@
+Compose startup verification - 11 November 2026
+Docker Desktop Linux/amd64; isolated project; synthetic credentials and student only.
+
+Fresh project up --build --wait: exit 0.
+Observed startup: PostgreSQL healthy -> migrator exited 0 -> backend healthy -> frontend healthy.
+Initially absent API image tag: built once; migrator and backend used identical image IDs.
+Password containing semicolon, dollar sign, and quote: preserved in actual container and authenticated successfully.
+backend: state=running health=healthy exit=0
+frontend: state=running health=healthy exit=0
+migrator: state=exited health= exit=0
+postgres: state=running health=healthy exit=0
+Named volume mount: /var/lib/postgresql (not a bind mount).
+Backend host port: 8080; PostgreSQL host port: unpublished.
+Frontend runtime config: {"API_BASE_URL":"http://localhost:8080"}
+API /classes HTTP 200; allowed origin: http://localhost:18081
+
+Database stopped: explicit probe exit 1; Docker backend health became unhealthy.
+Database restarted: backend health recovered automatically.
+Browser: class creation, hold creation, simulated confirmation, history/count refresh, and forgetting passed.
+Final API summary:
+{
+  "name": "Class 6 - Compose smoke",
+  "totalSeats": 2,
+  "heldSeats": 0,
+  "confirmedSeats": 1,
+  "availableSeats": 1
+}
+
+Backend foundation tests: 33 passed, 0 failed, 0 skipped.
+Full 220-case backend and 115-case frontend suites were not rerun for this orchestration change.
+Class/application persistence across a full compose down/up cycle was not tested here.
+Example Compose settings: validated.
+Missing password: configuration rejected before startup.

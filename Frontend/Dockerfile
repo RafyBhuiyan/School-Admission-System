@@ -6,13 +6,19 @@ COPY . .
 RUN npm run build
 
 FROM nginx:stable-alpine@sha256:583b7f2fce1cdb8da5ad5c39ebd3c33b98b87d493190e548bdee1fa8c619c311 AS final
-ENV API_BASE_URL=http://localhost:8080
+ENV FRONTEND_HTTP_PORT=8080 \
+    HEALTHCHECK_HOST=127.0.0.1 \
+    NGINX_ENVSUBST_OUTPUT_DIR=/tmp/nginx-conf \
+    NGINX_ENVSUBST_FILTER=^FRONTEND_HTTP_PORT$
 COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /src/dist/ /usr/share/nginx/html/
 COPY --chmod=755 docker/40-runtime-config.sh /docker-entrypoint.d/40-runtime-config.sh
-RUN chown nginx:nginx /usr/share/nginx/html/config.json
+COPY --chmod=755 docker/healthcheck.sh /usr/local/bin/frontend-healthcheck
+RUN mkdir -p /tmp/nginx-conf \
+    && chown nginx:nginx /tmp/nginx-conf /usr/share/nginx/html/config.json
 USER nginx
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=3s --retries=3 \
-    CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
+    CMD ["/usr/local/bin/frontend-healthcheck"]
 CMD ["nginx", "-g", "daemon off;"]

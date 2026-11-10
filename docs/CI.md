@@ -10,7 +10,7 @@ also be started manually from GitHub's Actions tab once it is on the default bra
 | --- | --- |
 | Backend checks | .NET/tool restore, Release build, migration snapshot check, and all backend tests including PostgreSQL hold-creation races |
 | Frontend checks | `npm ci`, `npm run lint`, `npm test`, and `npm run build` |
-| Container builds | Build the pinned backend/migration-bundle image and the production Nginx frontend image |
+| Container builds | Validate Compose configuration, then build the pinned backend/migration-bundle and production Nginx frontend images |
 
 The backend uses the SDK specified in `global.json`. The frontend uses Node.js 22
 and the committed npm lockfile. The jobs run independently on Linux runners and
@@ -19,7 +19,7 @@ service using synthetic test credentials.
 
 The backend test project contains 33 foundation cases for configuration,
 dependency injection, error/validation responses, CORS, and Swagger, plus 11 real
-PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, 30 hold-creation cases, 16 hold-retrieval cases, 6 expiration cases, 28 confirmation cases, 26 cancellation cases, 19 student-application cases, 7 workflow/failure cases, 2 capacity-burst cases, and 2 real-process restart cases (220 total). The shared PostgreSQL fixture gives
+PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, 30 hold-creation cases, 16 hold-retrieval cases, 6 expiration cases, 28 confirmation cases, 26 cancellation cases, 19 student-application cases, 7 workflow/failure cases, 2 capacity-burst cases, 2 real-process restart cases, and 24 health-probe configuration cases (244 total). The shared PostgreSQL fixture gives
 each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_STRING`.
 The local EF tool also checks that
 the model matches its committed migration snapshot. The suite checks concurrent
@@ -60,7 +60,7 @@ the merge requirement.
 
 ## Add deployment later
 
-Add continuous deployment after Compose packaging, a hosting target, and deployment configuration are ready. Image builds already run in CI; orchestration and persistence checks remain to be added. Images are built for validation and are not pushed to a registry.
+Add continuous deployment after a hosting target and deployment configuration are ready. Compose configuration validation and image builds run in CI; automated stack startup and persistence checks remain to be added. Images are built for validation and are not pushed to a registry.
 
 The current workflow runs validation only. Its first hosted run is verified in
 GitHub after pushing; local checks do not execute GitHub Actions itself.
