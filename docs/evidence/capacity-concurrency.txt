@@ -1,0 +1,17 @@
+Actual test output extracted from Backend/SchoolAdmission.Tests/TestResults/concurrency.trx
+
+Test: SchoolAdmission.Tests.Integration.CapacityConcurrencyTests.OneHundredStudentsReserveExactlyTheRemainingCapacity(initiallyHeld: 0, initiallyConfirmed: 0)
+Outcome: Passed
+Requests=100; Capacity=10; InitiallyHeld=0; InitiallyConfirmed=0
+HTTP 201=10; HTTP 409=90; Other=0
+Database held=10; confirmed=0; occupied=10; totalRows=10; distinctStudents=10
+Invariant: occupied <= totalSeats => 10 <= 10 (PASS)
+Blocked allocation requests observed before lock release: 20
+
+Test: SchoolAdmission.Tests.Integration.CapacityConcurrencyTests.OneHundredStudentsReserveExactlyTheRemainingCapacity(initiallyHeld: 3, initiallyConfirmed: 2)
+Outcome: Passed
+Requests=100; Capacity=10; InitiallyHeld=3; InitiallyConfirmed=2
+HTTP 201=5; HTTP 409=95; Other=0
+Database held=8; confirmed=2; occupied=10; totalRows=10; distinctStudents=10
+Invariant: occupied <= totalSeats => 10 <= 10 (PASS)
+Blocked allocation requests observed before lock release: 20
