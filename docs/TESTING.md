@@ -27,4 +27,10 @@ The integration suite runs the actual ASP.NET Core pipeline and EF Core provider
 
 Existing race tests cover the last seat, duplicate applications, queued confirmations/cancellations, skipped locks, and competing lifecycle mutations. They use in-process hosts with separate database connections. Broader load and separate-process deployment tests remain outstanding.
 
+## Capacity bursts
+
+`CapacityConcurrencyTests` sends 100 distinct-student HTTP requests to a class with 10 seats. The two scenarios begin with no applications, or with three active holds and two confirmations. A shared start gate launches requests while the class row is locked; observed PostgreSQL blocking sessions confirm contention before the lock is released. The host uses a 20-connection pool to bound database resource use while all 100 HTTP requests remain in flight or queued.
+
+Assertions check the exact number of 201/409 responses, unique successful hold IDs, response-to-database matches, persisted active/confirmed counts, distinct student counts, capacity invariants, and the class summary. The worker is disabled for these allocation tests; separate suites verify its behavior. Results and observed blocking counts are preserved in the [actual output](evidence/capacity-concurrency.txt), extracted from the local TRX report. This is a correctness test, not a throughput benchmark.
+
 For commands and database-account setup, see [database verification](DATABASE.md#real-postgresql-schema-checks). [Test project notes](../Backend/SchoolAdmission.Tests/README.md) describe individual test groups; [verification results](PROGRESS.md) record the latest local run.

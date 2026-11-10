@@ -21,7 +21,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Check | Result |
 | --- | --- |
 | Release build | Passed with zero warnings or errors |
-| Backend suite | 216 passed, zero failed, zero skipped |
+| Backend suite | 218 passed, zero failed, zero skipped |
 | Foundation | 33 cases covering configuration, validation, CORS, errors, and Swagger |
 | Schema | 11 cases covering mappings, constraints, indexes, and migration rollback/reapply |
 | Class API | 23 cases covering response contracts, validation, errors, and duplicate-name races |
@@ -33,6 +33,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Cancellation | 26 cases covering 204/empty body, retries, history, seat reuse, ownership/header checks, error paths, exact expiry, lock waits, queued retries, and confirmation/expiration races |
 | Student applications | 19 cases covering exact fields, all statuses, class/history joins, ordering, student isolation, empty results, header validation, expiry boundaries, live transaction time, lifecycle flow, and OpenAPI |
 | HTTP workflows/database failures | 7 cases covering all eight operations with the real worker, identifier formats, elapsed-time expiry/reapplication, and atomic rollback/sanitized errors after rejected database writes |
+| Capacity bursts | 2 cases sending 100 distinct-student requests to a 10-seat class, empty and partially occupied; persisted results match available capacity |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
 
@@ -50,4 +51,8 @@ Student-list tests verify that header case and leading zeros are preserved, quer
 
 The [integration coverage audit](TESTING.md) maps success/error responses for every endpoint and the cross-cutting identity/lifecycle checks. Additional HTTP workflows run with the production worker enabled and exercise synthetic, leading-zero, and 64-character IDs. A real one-second hold expires without a follow-up HTTP request. Test-only PostgreSQL triggers reject inserts/updates to verify rollback of allocation cleanup and lifecycle mutations; dropping the trigger permits a successful retry. These tests passed without production-code changes.
 
-The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/integration.trx`. No hosted CI run was performed during this verification. Broader load and deployment checks remain outstanding.
+The capacity tests observed 20 blocked allocation requests before releasing the class lock in each scenario. For the empty class, 10 requests returned 201 and 90 returned 409. With three HELD and two CONFIRMED rows present, five returned 201 and 95 returned 409. Both ended with 10 occupied seats, 10 rows, 10 distinct students, and zero availability. Successful response IDs and expiries matched persisted rows. The tests use one in-process API host and a pool bounded to 20 connections; all 100 HTTP requests launch through a shared start gate. The expiration worker is disabled for deterministic allocation counts with 600-second holds.
+
+Aggregate metrics were extracted directly from the successful TRX results into [preserved concurrency output](evidence/capacity-concurrency.txt). The raw report remains ignored to avoid committing machine-specific logs. No production-code or schema changes were required.
+
+The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/concurrency.trx`. No hosted CI run was performed during this verification. Broader load and deployment checks remain outstanding.
