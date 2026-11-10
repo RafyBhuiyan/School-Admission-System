@@ -8,8 +8,9 @@
 - Hold creation with a PostgreSQL class-row lock, overdue-hold cleanup, duplicate/capacity checks, and configurable duration.
 - Public hold retrieval with effective expiry, database server time, and no student identifier in the response.
 - Automatic expiration in bounded batches, using fresh scoped services, database time, conditional updates, and skipped row locks.
+- Simulated-payment confirmation with ownership checks, hold locking, fresh-time expiry, and idempotent retries.
 
-Confirmation, cancellation, My Applications, frontend workflows, and Docker Compose packaging remain unimplemented. The React application is a starter.
+Cancellation, My Applications, frontend workflows, and Docker Compose packaging remain unimplemented. The React application is a starter.
 
 ## Verification
 
@@ -18,7 +19,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Check | Result |
 | --- | --- |
 | Release build | Passed with zero warnings or errors |
-| Backend suite | 136 passed, zero failed, zero skipped |
+| Backend suite | 164 passed, zero failed, zero skipped |
 | Foundation | 33 cases covering configuration, validation, CORS, errors, and Swagger |
 | Schema | 11 cases covering mappings, constraints, indexes, and migration rollback/reapply |
 | Class API | 23 cases covering response contracts, validation, errors, and duplicate-name races |
@@ -26,6 +27,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Hold creation | 30 cases covering headers, duration, conflicts, history, cleanup, rollback, and concurrent allocation |
 | Hold retrieval | 16 cases covering every status, exact expiry boundaries, live database time, read-only behavior, errors, and public response fields |
 | Expiration | 6 cases covering empty/repeated batches, state/timestamp preservation, batch limits/order, locked rows, concurrent batches, and hosted workers without HTTP requests |
+| Confirmation | 28 cases covering the exact response, ownership/header/body checks, retries, committed expiry, microsecond boundaries, concurrent confirmations, lock waits, and expiration-worker contention |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
 
@@ -35,4 +37,6 @@ Exact-boundary tests freeze only the scalar clock input; PostgreSQL executes the
 
 Hosted-worker tests enable the production background service in two application hosts, with one row per batch. They observe persisted expiry across cycles without HTTP clients. Other endpoint tests disable only that hosted service to preserve controlled stored-state assertions. Worker batches skip locked rows and keep confirmed/cancelled states and historical timestamps intact.
 
-The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/expiration.trx`. No hosted CI run was performed during this verification. Confirmation/cancellation races and deployment checks remain outstanding.
+Eight queued confirmations returned the same successful result with one stored admission and unchanged occupancy. A hold made overdue while confirmation waited for its row lock was persisted as EXPIRED before the 409 response. A controlled expiration-worker lock race also returned 409 after the worker committed expiry. Ownership mismatches leave stored state unchanged, including overdue HELD rows.
+
+The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/confirmation.trx`. No hosted CI run was performed during this verification. Cancellation races and deployment checks remain outstanding.

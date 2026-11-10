@@ -13,6 +13,37 @@ namespace SchoolAdmission.Api.Services;
 
 public sealed class HoldService(AppDbContext dbContext, IOptions<HoldOptions> options)
 {
+    public async Task<ConfirmHoldResult> ConfirmAsync(Guid holdId, string studentId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        var hold = await dbContext.AdmissionHolds
+            .FromSql($"SELECT * FROM \"AdmissionHolds\" WHERE id = {holdId} FOR UPDATE")
+            .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+        if (hold is null) return new(ConfirmHoldOutcome.NotFound);
+        // Ownership precedes status checks and all mutations, including expiry persistence.
+        if (!string.Equals(hold.StudentId, studentId, StringComparison.Ordinal)) return new(ConfirmHoldOutcome.Forbidden);
+        if (hold.Status == AdmissionHoldStatus.CONFIRMED)
+            return new(ConfirmHoldOutcome.Confirmed, new ConfirmHoldResponse(hold.Id, "CONFIRMED"));
+        if (hold.Status != AdmissionHoldStatus.HELD) return new(ConfirmHoldOutcome.Conflict);
+
+        var now = await dbContext.Database.SqlQuery<DateTime>($"SELECT clock_timestamp() AS \"Value\"")
+            .SingleAsync(cancellationToken);
+        var lockedHold = dbContext.AdmissionHolds.Where(row => row.Id == holdId && row.Status == AdmissionHoldStatus.HELD);
+        if (hold.ExpiresAt <= now)
+        {
+            await lockedHold.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Status, AdmissionHoldStatus.EXPIRED), cancellationToken);
+            // Commit expiry before the controller returns 409; throwing here would roll it back.
+            await transaction.CommitAsync(cancellationToken);
+            return new(ConfirmHoldOutcome.Conflict);
+        }
+
+        await lockedHold.ExecuteUpdateAsync(setters => setters
+            .SetProperty(row => row.Status, AdmissionHoldStatus.CONFIRMED)
+            .SetProperty(row => row.ConfirmedAt, now), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return new(ConfirmHoldOutcome.Confirmed, new ConfirmHoldResponse(holdId, "CONFIRMED"));
+    }
+
     public async Task<HoldDetailsResponse?> GetByIdAsync(Guid holdId, CancellationToken cancellationToken)
     {
         var databaseTime = dbContext.Database.SqlQuery<DateTime>($"SELECT clock_timestamp() AS \"Value\"");

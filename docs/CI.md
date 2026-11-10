@@ -18,11 +18,11 @@ service using synthetic test credentials.
 
 The backend test project contains 33 foundation cases for configuration,
 dependency injection, error/validation responses, CORS, and Swagger, plus 11 real
-PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, 30 hold-creation cases, 16 hold-retrieval cases, and 6 expiration cases (136 total). The shared PostgreSQL fixture gives
+PostgreSQL schema cases, 23 class API cases, 17 seat-summary query cases, 30 hold-creation cases, 16 hold-retrieval cases, 6 expiration cases, and 28 confirmation cases (164 total). The shared PostgreSQL fixture gives
 each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_STRING`.
 The local EF tool also checks that
 the model matches its committed migration snapshot. The suite checks concurrent
-hold creation and concurrent expiration; confirmation/cancellation races remain planned.
+hold creation, concurrent confirmation, and expiration contention; cancellation races remain planned.
 There is no frontend test script yet. Broader lifecycle/concurrency coverage remains to be added.
 
 ## Enable the workflow

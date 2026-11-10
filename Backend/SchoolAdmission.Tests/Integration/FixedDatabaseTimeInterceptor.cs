@@ -15,7 +15,7 @@ internal sealed class FixedDatabaseTimeInterceptor(DateTime value) : DbCommandIn
         CancellationToken cancellationToken = default)
     {
         const string clockExpression = "SELECT clock_timestamp() AS \"Value\"";
-        Assert.Contains(clockExpression, command.CommandText);
+        if (!command.CommandText.Contains(clockExpression, StringComparison.Ordinal)) return ValueTask.FromResult(result);
         command.CommandText = command.CommandText.Replace(clockExpression,
             "SELECT @test_database_time AS \"Value\"", StringComparison.Ordinal);
         command.Parameters.Add(new NpgsqlParameter<DateTime>("test_database_time", value));
