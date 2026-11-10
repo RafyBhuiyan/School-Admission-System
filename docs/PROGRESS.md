@@ -7,23 +7,31 @@
 - Class creation, listing, and detail queries with consistent seat summaries.
 - Hold creation with a PostgreSQL class-row lock, overdue-hold cleanup, duplicate/capacity checks, and configurable duration.
 - Public hold retrieval with effective expiry, database server time, and no student identifier in the response.
+- Automatic expiration in bounded batches, using fresh scoped services, database time, conditional updates, and skipped row locks.
+- Simulated-payment confirmation with ownership checks, hold locking, fresh-time expiry, and idempotent retries.
+- Cancellation with ownership checks, terminal-state protection, retained history, and released capacity for reapplication.
+- Student application listing with header-based filtering, class names, effective expiry, and retained history across classes.
 
-Confirmation, cancellation, automatic expiration, My Applications, frontend workflows, and Docker Compose packaging remain unimplemented. The React application is a starter.
+Frontend workflows and Docker Compose packaging remain unimplemented. The React application is a starter.
 
 ## Verification
 
-Verified locally on 9 November 2026 against PostgreSQL 18:
+Verified locally on 10 November 2026 against PostgreSQL 18:
 
 | Check | Result |
 | --- | --- |
 | Release build | Passed with zero warnings or errors |
-| Backend suite | 124 passed, zero failed, zero skipped |
-| Foundation | 27 cases covering configuration, validation, CORS, errors, and Swagger |
+| Backend suite | 209 passed, zero failed, zero skipped |
+| Foundation | 33 cases covering configuration, validation, CORS, errors, and Swagger |
 | Schema | 11 cases covering mappings, constraints, indexes, and migration rollback/reapply |
 | Class API | 23 cases covering response contracts, validation, errors, and duplicate-name races |
 | Seat summaries | 17 cases covering status/expiry boundaries, capacity, class isolation, and fresh database time |
 | Hold creation | 30 cases covering headers, duration, conflicts, history, cleanup, rollback, and concurrent allocation |
 | Hold retrieval | 16 cases covering every status, exact expiry boundaries, live database time, read-only behavior, errors, and public response fields |
+| Expiration | 6 cases covering empty/repeated batches, state/timestamp preservation, batch limits/order, locked rows, concurrent batches, and hosted workers without HTTP requests |
+| Confirmation | 28 cases covering the exact response, ownership/header/body checks, retries, committed expiry, microsecond boundaries, concurrent confirmations, lock waits, and expiration-worker contention |
+| Cancellation | 26 cases covering 204/empty body, retries, history, seat reuse, ownership/header checks, error paths, exact expiry, lock waits, queued retries, and confirmation/expiration races |
+| Student applications | 19 cases covering exact fields, all statuses, class/history joins, ordering, student isolation, empty results, header validation, expiry boundaries, live transaction time, lifecycle flow, and OpenAPI |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
 
@@ -31,4 +39,12 @@ The last-seat test uses two independent in-process API hosts sharing PostgreSQL:
 
 Exact-boundary tests freeze only the scalar clock input; PostgreSQL executes the production query's comparisons. Separate tests use the unmodified live clock inside existing transactions to detect regressions to transaction-start time. Hold retrieval uses the same captured time for effective status and `serverTime`, reports overdue rows as `EXPIRED`, and leaves stored data unchanged.
 
-The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/hold-retrieval.trx`. No hosted CI run was performed during this verification. Broader confirmation/cancellation/worker races and deployment checks remain outstanding.
+Hosted-worker tests enable the production background service in two application hosts, with one row per batch. They observe persisted expiry across cycles without HTTP clients. Other endpoint tests disable only that hosted service to preserve controlled stored-state assertions. Worker batches skip locked rows and keep confirmed/cancelled states and historical timestamps intact.
+
+Eight queued confirmations returned the same successful result with one stored admission and unchanged occupancy. A hold made overdue while confirmation waited for its row lock was persisted as EXPIRED before the 409 response. A controlled expiration-worker lock race also returned 409 after the worker committed expiry. Ownership mismatches leave stored state unchanged, including overdue HELD rows.
+
+Cancellation tests reallocate a released seat both to the original student and to another student, with the old row retained. Eight queued cancellations return 204 and retain one history row. Controlled races let confirmation, cancellation, or expiration acquire the lock first, then verify a competing operation returns 409 and cannot overwrite the committed terminal state. Expiry during a cancellation lock wait is committed as EXPIRED before returning 409, without setting a cancellation timestamp.
+
+Student-list tests verify that header case and leading zeros are preserved, query parameters cannot override the selected student, history is retained across classes, and reads leave stored rows unchanged. Exact-boundary cases share one captured clock value across rows. A complete HTTP flow creates two applications, confirms one, cancels the other, and checks their final statuses in the list. OpenAPI covers all eight operations.
+
+The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/student-applications.trx`. No hosted CI run was performed during this verification. Broader load and deployment checks remain outstanding.

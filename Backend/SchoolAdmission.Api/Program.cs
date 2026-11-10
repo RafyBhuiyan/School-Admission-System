@@ -6,6 +6,7 @@ using SchoolAdmission.Api.Configuration;
 using SchoolAdmission.Api.Data;
 using SchoolAdmission.Api.Middleware;
 using SchoolAdmission.Api.Services;
+using SchoolAdmission.Api.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,15 @@ builder.Services.AddDbContext<AppDbContext>((services, options) =>
     options.UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.DefaultConnection));
 builder.Services.AddScoped<ClassService>();
 builder.Services.AddScoped<HoldService>();
+builder.Services.AddOptions<ExpirationOptions>()
+    .BindConfiguration("Expiration")
+    .Validate(options => options.IntervalMilliseconds is >= 100 and <= 60000,
+        "Expiration:IntervalMilliseconds must be between 100 and 60000.")
+    .Validate(options => options.BatchSize is >= 1 and <= 1000,
+        "Expiration:BatchSize must be between 1 and 1000.")
+    .ValidateOnStart();
+builder.Services.AddScoped<HoldExpirationService>();
+builder.Services.AddHostedService<HoldExpirationWorker>();
 builder.Services.AddOptions<HoldOptions>()
     .Configure<IConfiguration>((options, configuration) =>
         options.DurationSeconds = int.TryParse(configuration[HoldOptions.DurationKey] ?? "600",
