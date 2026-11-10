@@ -157,7 +157,7 @@ test('successful apply attaches the current identity and refreshes counts and ap
   assert.equal(reads, 2)
   assert.equal(catalog.getSnapshot().classes[0].availableSeats, 4)
   assert.deepEqual(student.getSnapshot().applications, [history])
-  assert.ok(catalog.getSnapshot().message?.includes('temporarily held'))
+  assert.ok(catalog.getSnapshot().message?.includes('Application created.'))
   assert.equal(await catalog.apply(id), false)
   catalog.stop()
 })

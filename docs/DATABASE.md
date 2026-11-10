@@ -64,7 +64,7 @@ $env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=s
 dotnet ef database update --project Backend/SchoolAdmission.Api
 ```
 
-This explicitly applies `20261108192613_InitialAdmissionSchema`. Starting the API does not automatically apply migrations. Controlled Docker initialization is scheduled for packaging.
+This explicitly applies `20261108192613_InitialAdmissionSchema`. Starting the API does not automatically apply migrations. The backend image includes `/app/migrate` for controlled initialization before API startup; see [container setup](CONTAINERS.md).
 
 Check the model snapshot and generate a reviewable, idempotent SQL script:
 

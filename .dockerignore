@@ -1,0 +1,13 @@
+**
+!global.json
+!.config/
+!.config/dotnet-tools.json
+!Backend/
+!Backend/SchoolAdmission.Api/
+!Backend/SchoolAdmission.Api/**
+Backend/**/bin/
+Backend/**/obj/
+Backend/**/.env*
+Backend/**/*.user
+Backend/**/Dockerfile*
+Backend/**/.dockerignore
