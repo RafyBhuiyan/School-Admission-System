@@ -3,6 +3,7 @@ import type { SubmitEvent } from 'react'
 import { useApi } from './apiContext.ts'
 import { browserStudentStorage, createStudentSession, STUDENT_STORAGE_KEY, validStudentId } from './studentSession.ts'
 import './App.css'
+import { ClassPanel } from './ClassPanel.tsx'
 
 const statusNames = { HELD: 'Seat held', CONFIRMED: 'Confirmed', EXPIRED: 'Expired', CANCELLED: 'Cancelled' }
 
@@ -66,6 +67,7 @@ function App() {
             </section>
           </>
         )}
+        <ClassPanel student={session} />
         <p className="portal-footnote">Application status is confirmed by the school’s admission system.</p>
       </main>
       <footer>School admissions <span>Simple beginnings. Clear next steps.</span></footer>

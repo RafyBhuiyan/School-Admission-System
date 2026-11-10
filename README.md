@@ -2,7 +2,7 @@
 
 A school admission application with class management, temporary seat holds, and PostgreSQL transactions protecting limited seats. The backend supports creating classes, viewing availability, applying, confirming/cancelling holds, and reviewing a student's application history.
 
-Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds, and confirmation simulates successful payment. The frontend supports student identification and application history; class management, applying, and payment/cancellation controls are not yet available in the UI.
+Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds, and confirmation simulates successful payment. The frontend supports student identification, application history, class creation, seat availability, and applying. Payment/cancellation controls are not yet available in the UI.
 
 ## Run locally
 
@@ -27,6 +27,8 @@ npm run dev
 ```
 
 Open `http://localhost:5173` and enter a 17-digit birth registration number. The browser remembers the student and automatically loads their applications on return. Use Change student or Forget this device when appropriate. Edit `Frontend/public/config.json` to set the browser-reachable `API_BASE_URL` (default `http://localhost:8080`); see [frontend setup](Frontend/README.md). Docker Compose startup is not available yet.
+
+Use Create a class for demo administration. Seat counts refresh every four seconds while the page is visible. Applying reserves a temporary hold and refreshes availability and application history.
 
 ## Configuration
 

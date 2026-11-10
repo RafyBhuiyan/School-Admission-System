@@ -56,3 +56,22 @@ button:hover { background: #f0f5ef; }
 footer { border-top: 1px solid #dce3dc; padding: 22px 0; font-size: 11px; color: #6b7d75; display: flex; justify-content: space-between; }
 footer span { color: #8a9790; }
 @media (max-width: 600px) { .portal { padding: 0 20px; } .site-header { padding: 20px 0; } .header-note { display: none; } main { padding-top: 34px; } .identity-card { padding: 24px 20px; } .card-heading { gap: 10px; } .student-bar { padding: 22px; align-items: flex-start; flex-direction: column; gap: 18px; } .student-actions { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; } .application-list li { align-items: flex-start; padding: 18px; } footer span { display: none; } }
+.class-section { margin-top: 42px; border-top: 1px solid #dce3dc; padding-top: 32px; }
+.catalog-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.class-form { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; padding: 26px; background: #fff; border: 1px solid #dce4de; border-radius: 12px; margin-bottom: 24px; }
+.class-form-heading, .class-form > button { grid-column: 1 / -1; }
+.class-form-heading p { margin: 0; color: #70817f; font-size: 12px; }
+.class-form > button { width: auto; justify-self: start; min-width: 160px; }
+.form-error { color: #a43d2c; font-size: 12px; margin: 7px 0 0; }
+.class-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr)); gap: 18px; list-style: none; padding: 0; margin: 20px 0 0; }
+.class-card { padding: 23px; border: 1px solid #dce4de; border-radius: 12px; background: #fff; }
+.class-card-title { display: flex; gap: 14px; align-items: flex-start; justify-content: space-between; }
+.class-card-title h3 { margin: 5px 0 0; overflow-wrap: anywhere; }
+.seat-counts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 22px 0; margin: 0; }
+.seat-counts dt { color: #70817f; font-size: 10px; margin-bottom: 8px; }
+.seat-counts dd { font-size: 23px; margin: 0; color: #41615c; }
+.available-count dd { color: #174c4d; font-weight: 650; }
+.catalog-note { margin: 16px 0 0; }
+.success-note { padding: 13px 17px; border-radius: 8px; background: #e6f2e9; color: #28604d; font-size: 13px; }
+@media (max-width: 600px) { .catalog-actions { justify-content: flex-start; } .class-section > .applications-heading { align-items: flex-start; flex-direction: column; } .class-form { grid-template-columns: 1fr; padding: 20px; gap: 18px; } }
+.seat-counts dd { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }

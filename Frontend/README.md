@@ -1,6 +1,6 @@
 # Frontend
 
-React 19 and TypeScript with Vite. The portal identifies a student, remembers the selection, and displays their application history through the shared API client. Class administration, applying, and payment/cancellation controls remain unimplemented.
+React 19 and TypeScript with Vite. The portal identifies a student, remembers the selection, displays application history, creates admission classes, and applies for available seats through the shared API client. Payment/cancellation controls remain unimplemented.
 
 ## Run and check
 
@@ -45,4 +45,12 @@ Change student clears the old selection/history and saved value, then presents a
 
 If browser storage is blocked, temporary access still works with a visible notice. A failed clear advises the user to clear the site's data before leaving a shared device. A request failure retains the valid student selection and offers a retry. The screen explains the shared-device persistence trade-off; this identifier is not authentication.
 
-The 49 tests include 30 API/configuration checks and 19 session/validation checks covering restoration, switching, forgetting, races, storage failures, and retries. Browser checks used a local synthetic API fixture to verify invalid input, automatic loading after reload/tab reopen, changing students, and forgetting across two tabs. The [preview](../docs/evidence/student-portal.png) contains only synthetic data and a masked identifier. Live .NET/browser integration and a full browser-process restart were not exercised in this frontend verification.
+## Classes and applying
+
+Class cards show total, held, confirmed, and available seats. The catalog refreshes every four seconds after the previous read completes, pauses polling when the page is hidden, and cleans up requests/timers on unmount. Failures retain the last snapshot, show an error, and allow retry. Class creation requires a trimmed 1–200-character name and a positive integer capacity up to 2147483647. Server validation and duplicate-name conflicts stay visible without clearing the form.
+
+Apply requires a selected student and available capacity. Existing active/confirmed applications disable reapplication; the backend remains authoritative. Duplicate clicks are blocked while a write is pending. Successful creation refreshes classes; successful Apply refreshes both classes and the selected student's history. A 409 also triggers fresh reads. Changing students aborts an in-flight Apply and suppresses its late response. Mutations are never retried automatically.
+
+The demo administration form is unauthenticated, matching the backend. Do not treat it as production administrator authorization.
+
+The 70 tests include 30 API/configuration checks, 19 student-session checks, and 21 class catalog/validation/polling/mutation checks. Identity browser checks used a local synthetic API fixture. Class creation, validation, duplicate-name conflicts, applying, automatic count/history updates, full/duplicate disabling, and discovery of externally created classes through polling were checked in the browser against the real .NET API and disposable PostgreSQL 18 database. Temporary services were stopped and runtime configuration restored afterward. The [catalog preview](../docs/evidence/class-catalog.png) contains synthetic class/application data. Full browser-process restart and mobile viewport checks remain unverified.
