@@ -25,7 +25,7 @@ Edit `public/config.json` for development:
 
 The browser fetches this file with caching disabled before rendering the app. The URL must be an absolute HTTP(S) address reachable from the browser, with no credentials, query, or fragment. An API path prefix is allowed. Configure backend CORS for the frontend origin. Docker-internal hostnames are usually not reachable from the host browser.
 
-Vite copies the file into `dist/config.json`. For an already-built deployment, replace that file and reload the browser; JavaScript does not need to be rebuilt. Serve it without long-lived caching. Exporting `API_BASE_URL` in a shell does not rewrite the JSON file or change an existing bundle. Container-startup generation is not implemented yet. The file is public and must contain no secrets.
+Vite copies the file into `dist/config.json`. For an already-built deployment, replace that file and reload the browser; JavaScript does not need to be rebuilt. Exporting `API_BASE_URL` in a shell does not change local Vite configuration. The production container generates this file from its `API_BASE_URL` environment variable at startup, then Nginx serves it without caching. The file is public and must contain no secrets. See [container setup](../docs/CONTAINERS.md) for the build context, port mapping, and health check.
 
 Missing or invalid configuration displays a startup error rather than silently selecting a different backend.
 

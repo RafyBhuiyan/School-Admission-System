@@ -1,0 +1,32 @@
+Container image verification - 11 November 2026
+Docker Desktop, Linux/amd64; isolated PostgreSQL 18; synthetic data only.
+
+Image metadata (image ID, user, platform, bytes):
+sha256:07811f71094728f453f6911e4a55a39e1cb62db19674e2abb12f695d513ed1be 1654 linux/amd64 401430424
+sha256:417224191329b190b9a6087f4f52d9e1c7fdd0c934507b6650ceb073b1c01c15 nginx linux/amd64 93126284
+
+Both production image builds: passed.
+Migration bundle: initial schema application exit 0; repeat exit 0 (no changes).
+API image: dotnet --list-sdks returned no installed SDKs.
+Frontend Node build-stage tests: 115 passed, 0 failed, 0 skipped; lint: 0 warnings/errors.
+Runtime config: 4 URL/JSON-escaping cases passed; 6 invalid settings rejected.
+Frontend health: healthy
+config.json HTTP 200; Cache-Control: no-store
+Generated config: {"API_BASE_URL":"http://localhost:18080"}
+Index, SPA fallback, hashed JS: HTTP 200; missing asset: HTTP 404.
+Hashed asset Cache-Control: public, max-age=31536000, immutable.
+API /classes HTTP 200; Access-Control-Allow-Origin: http://localhost:18081
+CORS preflight: HTTP 204; Content-Type and X-Student-Id allowed.
+
+Browser: created a class, applied/confirmed student one, applied/cancelled student two, then forgot selection.
+Final API seat summary:
+{
+  "name": "Class 6 - Container demo",
+  "totalSeats": 2,
+  "heldSeats": 0,
+  "confirmedSeats": 1,
+  "availableSeats": 1
+}
+
+Observed limitation: optional native GSSAPI library probe logged a warning; password-authenticated migrations and API operations succeeded.
+No Compose persistence or hosted CI run was performed.
