@@ -9,7 +9,7 @@ also be started manually from GitHub's Actions tab once it is on the default bra
 | Required check name | Commands |
 | --- | --- |
 | Backend checks | .NET/tool restore, Release build, migration snapshot check, and all backend tests including PostgreSQL hold-creation races |
-| Frontend checks | `npm ci`, `npm run lint`, and `npm run build` |
+| Frontend checks | `npm ci`, `npm run lint`, `npm test`, and `npm run build` |
 
 The backend uses the SDK specified in `global.json`. The frontend uses Node.js 22
 and the committed npm lockfile. The jobs run independently on Linux runners and
@@ -23,7 +23,7 @@ each test class its own uniquely named database using `SCHEMA_TEST_CONNECTION_ST
 The local EF tool also checks that
 the model matches its committed migration snapshot. The suite checks concurrent
 hold creation, concurrent confirmation/cancellation, expiration contention, and persistence across real API-process restarts. Restart tests launch the built API on an ephemeral loopback port using the installed .NET runtime, then terminate only their own processes. Broader load and container deployment tests remain outstanding.
-There is no frontend test script yet. Broader lifecycle/concurrency coverage remains to be added.
+The frontend runs 30 API-client/runtime-configuration tests with Node's built-in test runner and TypeScript type checking. Tests include an ephemeral loopback HTTP server; no external service or new test dependency is required. Browser workflow coverage remains to be added.
 
 ## Enable the workflow
 

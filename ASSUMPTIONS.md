@@ -1,6 +1,6 @@
 # Assumptions
 
-These are my design decisions. The backend supports class management, application history, hold creation/retrieval, confirmation, cancellation, and automatic expiration. Browser workflows remain unimplemented.
+These are my design decisions. The backend is implemented; the frontend has shared API handling and runtime configuration. Browser workflows remain unimplemented.
 
 - I treat each grade/shift as a separate class. I chose UUIDs rather than the sample `c_123`/`h_789` prefixes. Class names are case-sensitive, limited to 200 characters, and trimmed before validation; duplicates return 409.
 - I kept the 17-digit check in the React plan. The API accepts one trimmed, non-empty `X-Student-Id` up to 64 characters, including synthetic IDs such as `student-1`. I store it as `VARCHAR(64)` to preserve leading zeros and case. Hold creation needs no body; I reject unknown body fields so identity cannot be supplied in two places.
@@ -13,4 +13,4 @@ These are my design decisions. The backend supports class management, applicatio
 - I will remember the validated student ID in `localStorage`, restore it on startup, and fetch `/me/holds`. This meets browser-reopen continuity but leaves a sensitive ID on shared devices. Forget This Device clears it; Change Student replaces it and reloads applications. IDs must stay out of logs and URLs.
 - I treat the countdown as a display aid. Hold retrieval returns database `serverTime` and effective status without changing the stored row. The UI will poll, disable payment at estimated expiry, and fetch backend status; the browser clock cannot authorize payment.
 - I leave `POST /classes` unauthenticated for this demo and preserve header-free `GET /holds/{holdId}`. The header and UUIDs do not authenticate anyone; knowing an ID can expose status or allow impersonation. Real deployment would need authentication.
-- I chose services using scoped `AppDbContext` directly, without repository wrappers. Schema/configuration details and verification results are in [DATABASE.md](docs/DATABASE.md) and [PROGRESS.md](docs/PROGRESS.md).
+- I chose services using scoped `AppDbContext` directly, without repository wrappers. The frontend reads a separate runtime `config.json`, so its API address can change without rebuilding. Requests time out after 15 seconds; mutations are not automatically retried because a lost response may follow a committed write. Verification is in [PROGRESS.md](docs/PROGRESS.md).

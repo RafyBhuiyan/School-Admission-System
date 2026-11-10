@@ -1,6 +1,6 @@
 # AI usage
 
-I planned the project and used OpenAI Codex to help with scaffolding, EF mappings and migrations, API implementation, tests, and documentation drafts. I made the design choices and reviewed the suggestions against the assignment.
+I planned the project and used OpenAI Codex to help with scaffolding, EF mappings and migrations, backend/frontend API code, tests, and documentation drafts. I made the design choices and reviewed the suggestions against the assignment.
 
 During the initial review, I corrected three suggestions:
 
@@ -12,4 +12,4 @@ There were implementation corrections too. Adding EF's design package exposed a 
 
 I also questioned the handwritten seat-summary SQL. It was replaced with EF Core LINQ, keeping only the database clock expression. The first refactor failed six API tests because EF could not translate filtering/ordering after the record constructor; moving those operations before the response projection fixed it.
 
-Codex ran the Release build and PostgreSQL suite: 220 tests passed, none failed or skipped. New tests terminate and restart the built API as real OS processes, then compare stored IDs/timestamps and retry results. A five-second hold expires while the API is stopped; the restarted worker persists expiry before any student request. Existing boundary, ownership, retry, and concurrency tests also pass. This does not cover container deployment or concurrent allocation across separate processes. No production fix was needed. See [verification notes](docs/PROGRESS.md).
+The latest frontend checks passed 30 tests plus build/lint. Tests cover all eight endpoint methods, safe errors, aborts/timeouts, and changing runtime configuration through a real HTTP server. The previous backend run passed 220 tests, including real process restarts. The backend was unchanged and was not rerun for the client work. The UI workflows, browser integration, and container deployment remain unverified. See [verification notes](docs/PROGRESS.md).
