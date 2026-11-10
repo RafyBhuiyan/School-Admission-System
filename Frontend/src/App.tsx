@@ -20,11 +20,14 @@ function App() {
   const [validation, setValidation] = useState<string | null>(null)
   useEffect(() => {
     void session.start()
+    const onVisibility = () => session.setVisible(document.visibilityState === 'visible')
+    onVisibility()
     const onStorage = (event: StorageEvent) => {
       if (event.key === STUDENT_STORAGE_KEY || event.key === null) void session.restore()
     }
     window.addEventListener('storage', onStorage)
-    return () => { session.stop(); window.removeEventListener('storage', onStorage) }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => { session.stop(); window.removeEventListener('storage', onStorage); document.removeEventListener('visibilitychange', onVisibility) }
   }, [session])
 
   function identify(event: SubmitEvent<HTMLFormElement>) {
@@ -66,6 +69,7 @@ function App() {
             <HoldDetailPanel controller={details} />
             <section className="applications" aria-labelledby="applications-heading" aria-busy={state.phase === 'loading'}>
               <div className="applications-heading"><div><p className="eyebrow">YOUR PROGRESS</p><h2 id="applications-heading">Your applications</h2></div><button type="button" disabled={state.phase === 'loading'} onClick={() => { void session.refresh() }}>Refresh</button></div>
+              {state.applications.some(application => application.status === 'HELD') && <p className="muted">While a seat is held, applications update automatically.</p>}
               {state.phase === 'loading' && <p className="muted" role="status">Loading applications…</p>}
               {state.error && <div className="error-panel" role="alert"><p>{state.error}</p><button type="button" onClick={() => { void session.refresh() }}>Try again</button></div>}
               {state.phase === 'ready' && state.applications.length === 0 && <div className="empty-state"><h3>No applications yet</h3><p>Applications for this student will appear here.</p></div>}

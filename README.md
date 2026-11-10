@@ -26,7 +26,7 @@ npm ci
 npm run dev
 ```
 
-Open `http://localhost:5173` and enter a 17-digit birth registration number. The browser remembers the student and automatically loads their applications on return. Use Change student or Forget this device when appropriate. Edit `Frontend/public/config.json` to set the browser-reachable `API_BASE_URL` (default `http://localhost:8080`); see [frontend setup](Frontend/README.md). Docker Compose startup is not available yet.
+Open `http://localhost:5173` and enter a 17-digit birth registration number. The browser remembers the student and automatically loads their applications on return. History includes held, confirmed, expired, and cancelled applications; it refreshes every 2.5 seconds while a hold remains. Use Change student or Forget this device when appropriate. Edit `Frontend/public/config.json` to set the browser-reachable `API_BASE_URL` (default `http://localhost:8080`); see [frontend setup](Frontend/README.md). Docker Compose startup is not available yet.
 
 Use Create a class for demo administration. Seat counts refresh every four seconds while the page is visible. Applying opens the application details with a server-synchronized countdown. Confirm simulates payment; Cancel releases the seat. Status changes refresh availability and history, and the backend verifies expiry when the timer reaches zero.
 

@@ -57,6 +57,7 @@ test('a new session restores the saved ID and automatically loads history on sta
   await reopened.start()
   assert.equal(calls, 1)
   assert.deepEqual(reopened.getSnapshot().applications, [application])
+  reopened.stop()
 })
 
 test('malformed saved IDs are never restored or sent to the API', async () => {
@@ -96,6 +97,7 @@ test('changing students replaces persistence and stale responses cannot replace 
   assert.equal(session.getSnapshot().studentId, second)
   assert.equal(saved.getItem(STUDENT_STORAGE_KEY), second)
   assert.equal(session.getSnapshot().applications[0].className, 'Day')
+  session.stop()
 })
 
 test('stale failures cannot expose an old request error after forgetting', async () => {

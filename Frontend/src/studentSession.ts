@@ -21,7 +21,15 @@ export function browserStudentStorage(): StudentStorage | null {
   try { return window.localStorage } catch { return null }
 }
 
-export function createStudentSession(api: Pick<AdmissionApi, 'getMyHolds'>, storage: StudentStorage | null) {
+interface Scheduler {
+  set: (callback: () => void, delay: number) => unknown
+  clear: (handle: unknown) => void
+}
+
+export function createStudentSession(api: Pick<AdmissionApi, 'getMyHolds'>, storage: StudentStorage | null, scheduler: Scheduler = {
+  set: (callback, delay) => setTimeout(callback, delay),
+  clear: handle => clearTimeout(handle as ReturnType<typeof setTimeout>),
+}) {
   let saved: string | null = null
   let notice: string | null = null
   try {
@@ -32,30 +40,44 @@ export function createStudentSession(api: Pick<AdmissionApi, 'getMyHolds'>, stor
   const listeners = new Set<() => void>()
   let generation = 0
   let pending: AbortController | null = null
+  let active = false, visible = true
+  let poll: unknown
   function update(next: StudentState) { state = next; for (const listener of listeners) listener() }
-  function stop() { generation++; pending?.abort(); pending = null }
+  function clearPoll() { if (poll !== undefined) scheduler.clear(poll); poll = undefined }
+  function invalidate() { generation++; pending?.abort(); pending = null; clearPoll() }
+  function stop() { active = false; invalidate() }
+  function schedulePoll() {
+    clearPoll()
+    if (active && visible && state.studentId && state.applications.some(application => application.status === 'HELD')) {
+      poll = scheduler.set(() => { poll = undefined; void refresh(true) }, 2500)
+    }
+  }
 
-  async function refresh() {
-    stop()
+  async function refresh(background = false) {
+    if (background && pending) return
+    invalidate()
     const studentId = state.studentId
     if (!studentId) return
     const version = generation
     const controller = new AbortController()
     pending = controller
-    update({ ...state, phase: 'loading', error: null })
+    // Keep the list and its controls steady during periodic reads.
+    if (!background) update({ ...state, phase: 'loading', error: null })
     try {
       const applications = await api.getMyHolds(studentId, { signal: controller.signal })
       if (generation === version && !controller.signal.aborted) update({ ...state, applications, phase: 'ready', error: null })
     } catch (error) {
       if (generation !== version || controller.signal.aborted) return
       update({ ...state, phase: 'error', error: error instanceof ApiError ? error.message : 'Applications could not be loaded. Please try again.' })
+    } finally {
+      if (generation === version) { pending = null; schedulePoll() }
     }
   }
 
   async function identify(value: string): Promise<boolean> {
     const studentId = validStudentId(value)
     if (!studentId) return false
-    stop()
+    invalidate()
     let notice: string | null = null
     try {
       if (!storage) throw new Error('Storage unavailable')
@@ -68,7 +90,7 @@ export function createStudentSession(api: Pick<AdmissionApi, 'getMyHolds'>, stor
   }
 
   function forget() {
-    stop()
+    invalidate()
     let notice: string | null = null
     try {
       if (!storage) throw new Error('Storage unavailable')
@@ -79,7 +101,7 @@ export function createStudentSession(api: Pick<AdmissionApi, 'getMyHolds'>, stor
   }
 
   async function restore() {
-    stop()
+    invalidate()
     let studentId: string | null = null
     let notice: string | null = null
     try {
@@ -93,6 +115,12 @@ export function createStudentSession(api: Pick<AdmissionApi, 'getMyHolds'>, stor
   return {
     getSnapshot: () => state,
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
-    start: refresh, stop, refresh, identify, forget, changeStudent: forget, restore,
+    start: () => { active = true; return refresh() }, stop, refresh, identify, forget, changeStudent: forget, restore,
+    setVisible: (value: boolean) => {
+      if (visible === value) return
+      visible = value
+      if (!value) clearPoll()
+      else if (active && state.studentId) void refresh()
+    },
   }
 }
