@@ -10,6 +10,28 @@ namespace SchoolAdmission.Api.Controllers;
 
 public sealed class HoldsController(HoldService holdService) : ControllerBase
 {
+    [HttpDelete("holds/{holdId}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Cancel(Guid holdId,
+        [FromHeader(Name = "X-Student-Id"), Required(ErrorMessage = "A student ID is required.")] string? studentId,
+        CancellationToken cancellationToken)
+    {
+        studentId = ValidateStudentId(studentId);
+        if (studentId is null) return ValidationProblem(ModelState);
+        return await holdService.CancelAsync(holdId, studentId, cancellationToken) switch
+        {
+            CancelHoldOutcome.Cancelled => NoContent(),
+            CancelHoldOutcome.NotFound => Problem(statusCode: StatusCodes.Status404NotFound, title: "Hold not found."),
+            CancelHoldOutcome.Forbidden => Problem(statusCode: StatusCodes.Status403Forbidden, title: "This hold belongs to another student."),
+            CancelHoldOutcome.Conflict => Problem(statusCode: StatusCodes.Status409Conflict, title: "This hold cannot be cancelled."),
+            _ => throw new InvalidOperationException("Unexpected cancellation outcome.")
+        };
+    }
+
     [HttpPost("holds/{holdId}/confirm")]
     [ProducesResponseType(typeof(ConfirmHoldResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]

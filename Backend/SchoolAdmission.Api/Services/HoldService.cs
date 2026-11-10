@@ -13,6 +13,35 @@ namespace SchoolAdmission.Api.Services;
 
 public sealed class HoldService(AppDbContext dbContext, IOptions<HoldOptions> options)
 {
+    public async Task<CancelHoldOutcome> CancelAsync(Guid holdId, string studentId, CancellationToken cancellationToken)
+    {
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);
+        var hold = await dbContext.AdmissionHolds
+            .FromSql($"SELECT * FROM \"AdmissionHolds\" WHERE id = {holdId} FOR UPDATE")
+            .AsNoTracking().SingleOrDefaultAsync(cancellationToken);
+        if (hold is null) return CancelHoldOutcome.NotFound;
+        if (!string.Equals(hold.StudentId, studentId, StringComparison.Ordinal)) return CancelHoldOutcome.Forbidden;
+        if (hold.Status == AdmissionHoldStatus.CANCELLED) return CancelHoldOutcome.Cancelled;
+        if (hold.Status != AdmissionHoldStatus.HELD) return CancelHoldOutcome.Conflict;
+
+        var now = await dbContext.Database.SqlQuery<DateTime>($"SELECT clock_timestamp() AS \"Value\"")
+            .SingleAsync(cancellationToken);
+        var lockedHold = dbContext.AdmissionHolds.Where(row => row.Id == holdId && row.Status == AdmissionHoldStatus.HELD);
+        if (hold.ExpiresAt <= now)
+        {
+            await lockedHold.ExecuteUpdateAsync(setters => setters.SetProperty(row => row.Status, AdmissionHoldStatus.EXPIRED), cancellationToken);
+            // Persist expiry before reporting a conflict; an overdue hold is never cancelled.
+            await transaction.CommitAsync(cancellationToken);
+            return CancelHoldOutcome.Conflict;
+        }
+
+        await lockedHold.ExecuteUpdateAsync(setters => setters
+            .SetProperty(row => row.Status, AdmissionHoldStatus.CANCELLED)
+            .SetProperty(row => row.CancelledAt, now), cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return CancelHoldOutcome.Cancelled;
+    }
+
     public async Task<ConfirmHoldResult> ConfirmAsync(Guid holdId, string studentId, CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken);

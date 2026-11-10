@@ -1,6 +1,6 @@
 # Assumptions
 
-These are my design decisions. Class endpoints, hold creation/retrieval, simulated-payment confirmation, and automatic expiration are in place; cancellation and browser workflows remain unimplemented.
+These are my design decisions. Class endpoints, hold creation/retrieval, confirmation, cancellation, and automatic expiration are in place; the student application list and browser workflows remain unimplemented.
 
 - I treat each grade/shift as a separate class. I chose UUIDs rather than the sample `c_123`/`h_789` prefixes. Class names are case-sensitive, limited to 200 characters, and trimmed before validation; duplicates return 409.
 - I kept the 17-digit check in the React plan. The API accepts one trimmed, non-empty `X-Student-Id` up to 64 characters, including synthetic IDs such as `student-1`. I store it as `VARCHAR(64)` to preserve leading zeros and case. Hold creation needs no body; I reject unknown body fields so identity cannot be supplied in two places.

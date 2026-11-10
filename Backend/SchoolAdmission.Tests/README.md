@@ -20,9 +20,11 @@ The foundation tests supply synthetic configuration and do not open a database c
 
 `Integration/HoldConfirmationTests.cs` adds 28 cases covering confirmation, idempotent retries, historical confirmed expiry, ownership before mutation, validation, committed overdue expiry, exact boundaries, and OpenAPI. Eight requests queue on an observed row lock before returning the same success. Another case expires the hold while confirmation waits. A test-only interceptor pauses the real expiration service after it locks its selected row, then verifies the queued confirmation observes the worker's committed EXPIRED state. Boundary tests freeze only the database clock expression and check persisted results in a separate context.
 
-Set `SCHEMA_TEST_CONNECTION_STRING` to a test-server account with `CREATE DATABASE` permission. Each test class gets a uniquely named database, applies the migration, and drops its own database afterward. API and query cases reset only that owned database between cases. Database-backed cases are explicitly skipped when the variable is absent. GitHub Actions provides a PostgreSQL 18 service and runs all 164 cases. See [database verification](../../docs/DATABASE.md#real-postgresql-schema-checks) for setup.
+`Integration/HoldCancellationTests.cs` adds 26 cases covering 204 with no body, stable retries, history retention, released-seat reapplication by the same/different student, ownership/header validation, missing/malformed IDs, committed overdue expiry, microsecond boundaries, eight queued cancellations, and OpenAPI. Controlled row-lock tests exercise confirmation winning before cancellation, cancellation winning before confirmation, and expiration winning before cancellation. The competing operation must observe the committed terminal state and return 409.
 
-Current races cover hold creation, concurrent confirmation, and expiration contention; broader lifecycle/load coverage, cancellation races, and deployment to separate processes remain untested.
+Set `SCHEMA_TEST_CONNECTION_STRING` to a test-server account with `CREATE DATABASE` permission. Each test class gets a uniquely named database, applies the migration, and drops its own database afterward. API and query cases reset only that owned database between cases. Database-backed cases are explicitly skipped when the variable is absent. GitHub Actions provides a PostgreSQL 18 service and runs all 190 cases. See [database verification](../../docs/DATABASE.md#real-postgresql-schema-checks) for setup.
+
+Current races cover allocation, confirmation/cancellation, and expiration contention; broader load coverage and deployment to separate processes remain untested.
 
 Run from the repository root:
 

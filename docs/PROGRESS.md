@@ -9,8 +9,9 @@
 - Public hold retrieval with effective expiry, database server time, and no student identifier in the response.
 - Automatic expiration in bounded batches, using fresh scoped services, database time, conditional updates, and skipped row locks.
 - Simulated-payment confirmation with ownership checks, hold locking, fresh-time expiry, and idempotent retries.
+- Cancellation with ownership checks, terminal-state protection, retained history, and released capacity for reapplication.
 
-Cancellation, My Applications, frontend workflows, and Docker Compose packaging remain unimplemented. The React application is a starter.
+My Applications, frontend workflows, and Docker Compose packaging remain unimplemented. The React application is a starter.
 
 ## Verification
 
@@ -19,7 +20,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Check | Result |
 | --- | --- |
 | Release build | Passed with zero warnings or errors |
-| Backend suite | 164 passed, zero failed, zero skipped |
+| Backend suite | 190 passed, zero failed, zero skipped |
 | Foundation | 33 cases covering configuration, validation, CORS, errors, and Swagger |
 | Schema | 11 cases covering mappings, constraints, indexes, and migration rollback/reapply |
 | Class API | 23 cases covering response contracts, validation, errors, and duplicate-name races |
@@ -28,6 +29,7 @@ Verified locally on 10 November 2026 against PostgreSQL 18:
 | Hold retrieval | 16 cases covering every status, exact expiry boundaries, live database time, read-only behavior, errors, and public response fields |
 | Expiration | 6 cases covering empty/repeated batches, state/timestamp preservation, batch limits/order, locked rows, concurrent batches, and hosted workers without HTTP requests |
 | Confirmation | 28 cases covering the exact response, ownership/header/body checks, retries, committed expiry, microsecond boundaries, concurrent confirmations, lock waits, and expiration-worker contention |
+| Cancellation | 26 cases covering 204/empty body, retries, history, seat reuse, ownership/header checks, error paths, exact expiry, lock waits, queued retries, and confirmation/expiration races |
 | Migration snapshot | No pending model changes; no migration needed |
 | Whitespace/diff check | Passed |
 
@@ -39,4 +41,6 @@ Hosted-worker tests enable the production background service in two application 
 
 Eight queued confirmations returned the same successful result with one stored admission and unchanged occupancy. A hold made overdue while confirmation waited for its row lock was persisted as EXPIRED before the 409 response. A controlled expiration-worker lock race also returned 409 after the worker committed expiry. Ownership mismatches leave stored state unchanged, including overdue HELD rows.
 
-The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/confirmation.trx`. No hosted CI run was performed during this verification. Cancellation races and deployment checks remain outstanding.
+Cancellation tests reallocate a released seat both to the original student and to another student, with the old row retained. Eight queued cancellations return 204 and retain one history row. Controlled races let confirmation, cancellation, or expiration acquire the lock first, then verify a competing operation returns 409 and cannot overwrite the committed terminal state. Expiry during a cancellation lock wait is committed as EXPIRED before returning 409, without setting a cancellation timestamp.
+
+The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/cancellation.trx`. No hosted CI run was performed during this verification. Broader load and deployment checks remain outstanding.

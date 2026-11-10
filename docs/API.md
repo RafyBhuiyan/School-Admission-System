@@ -102,6 +102,14 @@ The transaction locks the hold and verifies ownership before any status change. 
 
 For a HELD row, the service reads fresh `clock_timestamp()` after acquiring the lock. If expiry is at or before that instant, it persists EXPIRED, commits, and then returns 409. Otherwise it saves CONFIRMED and `confirmed_at`, commits, and returns 200. EXPIRED/CANCELLED holds return 409. Confirmation preserves historical timestamps and total occupancy. The hold lock serializes concurrent confirmations and prevents the expiration worker from overwriting the result.
 
+## Cancel a hold
+
+`DELETE /holds/{holdId}` requires one `X-Student-Id` header, using the same trimming and 64-character rules as creation/confirmation. No request body is needed. Success is `204 No Content` with an empty response body.
+
+Cancellation locks the hold and verifies ownership before checking status or changing state. A valid non-owning identifier returns 403; unknown holds return 404 and malformed UUIDs return 400. An owned CANCELLED row returns 204 without changing its original cancellation timestamp, even after historical expiry. CONFIRMED or EXPIRED rows return 409.
+
+For a HELD row, fresh database time is read after the row lock. If `expires_at <= clock_timestamp()`, the service saves EXPIRED, commits, and returns 409 without setting `cancelled_at`. Otherwise it saves CANCELLED and `cancelled_at`, commits, and returns 204. Rows are retained with their original creation/expiry timestamps. A cancelled seat becomes available for another student or a new application by the same student. Confirmation, cancellation, and expiration coordinate through the hold row lock.
+
 ## Automatic expiration
 
 The expiration worker runs one bounded batch per interval, using database time. Defaults are 100 rows every 1000 ms, configurable with `Expiration__BatchSize` (1–1000) and `Expiration__IntervalMilliseconds` (100–60000). Locked rows are skipped and revisited on a later cycle. Only overdue HELD rows change; history and timestamps are retained. Failed batches are retried on the next cycle. Retrieval and seat summaries remain authoritative between cycles.
@@ -111,10 +119,10 @@ The expiration worker runs one bounded batch per interval, using database time. 
 | Status | Situation |
 | --- | --- |
 | 400 | Invalid class input/UUID/JSON, missing/blank/overlong/multiple student headers, or unsupported hold-body fields |
-| 403 | A valid student identifier does not own the hold being confirmed |
+| 403 | A valid student identifier does not own the hold being confirmed or cancelled |
 | 404 | A valid UUID does not identify the requested class or hold |
-| 409 | Duplicate class name, no remaining seat, duplicate application, or a hold that cannot be confirmed |
+| 409 | Duplicate class name, no remaining seat, duplicate application, or a hold that cannot be confirmed/cancelled |
 
 Errors use `application/problem+json` with `status`, `title`, `instance`, and `traceId`; validation errors also include `errors`. Unexpected database/infrastructure failures remain generic 500 responses. Database exceptions and constraint names are not exposed in the response.
 
-Swagger UI is available in development at `http://localhost:8080/swagger/index.html`. Cancellation and My Applications endpoints are not implemented yet.
+Swagger UI is available in development at `http://localhost:8080/swagger/index.html`. My Applications is not implemented yet.

@@ -2,7 +2,7 @@
 
 A school admission application with class management, temporary seat holds, and PostgreSQL transactions protecting limited seats. The backend supports creating classes, viewing seat availability, applying for a hold, and checking its status.
 
-Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds, and confirmation simulates successful payment. The frontend is currently a Vite starter; cancellation and My Applications are not implemented yet.
+Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript frontend. A background worker automatically expires overdue holds, confirmation simulates successful payment, and parents can cancel eligible holds. The frontend is currently a Vite starter; My Applications is not implemented yet.
 
 ## Run locally
 
@@ -53,10 +53,13 @@ Configuration is validated at startup. Additional allowed origins use `Cors__All
 | POST | `/classes/{classId}/holds` | Create a temporary hold; requires `X-Student-Id` |
 | GET | `/holds/{holdId}` | Retrieve current status, expiry, and database server time |
 | POST | `/holds/{holdId}/confirm` | Confirm an owned hold; requires `X-Student-Id` |
+| DELETE | `/holds/{holdId}` | Cancel an owned, eligible hold; requires `X-Student-Id` |
 
 Hold creation accepts one trimmed student identifier of up to 64 characters. A database row lock protects capacity and duplicate checks. Retrieval reports an overdue hold as `EXPIRED` immediately, even if its stored status is still `HELD`.
 
 Confirmation locks the hold, checks ownership and database time, and transitions a valid hold to `CONFIRMED`. Repeating a successful confirmation returns the same result. An overdue hold is saved as `EXPIRED` before returning a conflict.
+
+Cancellation returns `204` and releases a valid hold's seat while retaining history. Repeating an owned cancellation also returns `204`; confirmed or expired applications return a conflict.
 
 This demo has no authentication. The student header identifies a student, and hold status is publicly accessible by UUID. Use synthetic identifiers during development. See [API reference](docs/API.md) for response formats and errors, and [assumptions](ASSUMPTIONS.md) for design choices.
 
