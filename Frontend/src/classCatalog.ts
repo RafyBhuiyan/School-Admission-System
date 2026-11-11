@@ -44,20 +44,22 @@ export function createClassCatalog(api: CatalogApi, student: StudentSession, sch
   function clearTimer() { if (timer !== undefined) scheduler.clear(timer); timer = undefined }
   function message(error: unknown) { return error instanceof ApiError ? error.message : 'The request could not be completed. Please try again.' }
 
-  async function refresh() {
+  async function refresh(background = false) {
+    if (background && read) return
     clearTimer()
     read?.abort()
     const version = ++readVersion
     const controller = new AbortController()
     read = controller
-    update({ loading: true })
+    if (!background) update({ loading: true })
     try {
       const classes = await api.getClasses({ signal: controller.signal })
       if (attached && version === readVersion && !controller.signal.aborted) update({ classes, loading: false, error: null })
     } catch (error) {
       if (attached && version === readVersion && !controller.signal.aborted) update({ loading: false, error: message(error) })
     } finally {
-      if (attached && visible && version === readVersion) timer = scheduler.set(() => { void refresh() }, 4000)
+      if (version === readVersion) read = null
+      if (attached && visible && version === readVersion) timer = scheduler.set(() => { void refresh(true) }, 4000)
     }
   }
 
@@ -88,7 +90,7 @@ export function createClassCatalog(api: CatalogApi, student: StudentSession, sch
     else if (attached) void refresh()
   }
 
-  async function create(name: string, seats: string): Promise<boolean> {
+  async function create(name: string, seats: string, adminKey?: string): Promise<boolean> {
     if (state.creating || !attached) return false
     const input = validateClassInput(name, seats)
     update({ fieldErrors: input.errors, message: null, mutationError: null })
@@ -98,7 +100,7 @@ export function createClassCatalog(api: CatalogApi, student: StudentSession, sch
     creation = controller
     update({ creating: true })
     try {
-      await api.createClass(input.value, { signal: controller.signal })
+      await api.createClass(input.value, { signal: controller.signal, adminKey })
       if (!attached || version !== lifecycle || controller.signal.aborted) return false
       update({ message: 'Class created.' })
       await refresh()

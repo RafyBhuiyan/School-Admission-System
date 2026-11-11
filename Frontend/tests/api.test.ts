@@ -13,6 +13,21 @@ const holdDetails = { holdId, classId, status: 'HELD', expiresAt: '2030-01-01T00
 const createdHold = { ...holdDetails, studentId: '000Student-1' }
 const history = [{ ...holdDetails, className: 'Morning' }]
 
+test('administrator credential is sent only to administrator operations', async () => {
+  const seen: Headers[] = []
+  const api = createAdmissionApi('http://api.test', { fetcher: async (_url, options) => {
+    seen.push(new Headers(options?.headers))
+    if (seen.length === 1) return new Response(null, { status: 204 })
+    return Response.json(seen.length === 2 ? classSummary : [classSummary])
+  } })
+  const adminKey = 'synthetic-private-administrator-key'
+  await api.verifyAdmin(adminKey)
+  await api.createClass({ name: 'Morning', totalSeats: 10 }, { adminKey })
+  await api.getClasses({ adminKey })
+  await api.getClasses()
+  assert.deepEqual(seen.map(headers => headers.get('X-Admin-Key')), [adminKey, adminKey, null, null])
+})
+
 test('all eight endpoint methods use the expected paths, headers, methods, and bodies', async () => {
   const seen: { path: string; options: RequestInit }[] = []
   const fetcher: typeof fetch = async (path, options) => {

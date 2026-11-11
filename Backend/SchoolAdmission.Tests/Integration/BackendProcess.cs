@@ -31,6 +31,7 @@ internal sealed class BackendProcess(Process process, HttpClient client) : IAsyn
         startInfo.ArgumentList.Add(assembly);
         startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Production";
         startInfo.Environment["DOTNET_ENVIRONMENT"] = "Production";
+        startInfo.Environment["Admin__AccessKey"] = FoundationApiFactory.AdminKey;
         startInfo.Environment["ASPNETCORE_URLS"] = "http://127.0.0.1:0";
         startInfo.Environment["ConnectionStrings__DefaultConnection"] = connectionString;
         startInfo.Environment["HOLD_DURATION_SECONDS"] = durationSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -55,7 +56,9 @@ internal sealed class BackendProcess(Process process, HttpClient client) : IAsyn
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
             var address = await ready.Task.WaitAsync(TimeSpan.FromSeconds(25));
-            return new BackendProcess(process, new HttpClient { BaseAddress = address, Timeout = TimeSpan.FromSeconds(15) });
+            var client = new HttpClient { BaseAddress = address, Timeout = TimeSpan.FromSeconds(15) };
+            client.DefaultRequestHeaders.Add("X-Admin-Key", FoundationApiFactory.AdminKey);
+            return new BackendProcess(process, client);
         }
         catch
         {

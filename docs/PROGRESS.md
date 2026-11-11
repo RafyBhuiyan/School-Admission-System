@@ -2,6 +2,9 @@
 
 ## Available
 
+- Administrator-only class creation with a private server key and an in-memory browser sign-in. Missing configuration fails closed. This supersedes the earlier unauthenticated demo assumption.
+- Quiet background catalog/detail refreshes preserve content and action states. Starting a mutation aborts an older detail read so its late response cannot overwrite the result.
+
 - Validated configuration, CORS, Problem Details, and development Swagger/OpenAPI.
 - EF Core entities, migration, constraints, and indexes for classes and applications.
 - Class creation, listing, and detail queries with consistent seat summaries.
@@ -24,6 +27,8 @@
 Compose startup and the complete class/application persistence cycle across `down` and `up` are verified in isolated projects. A reusable clean-source runner performs the same check in CI. Browser workflow and fault-recovery checks are recorded in [UI verification](UI-VERIFICATION.md); full browser-process restart and mobile viewport checks remain unverified.
 
 ## Verification
+
+The latest administrator/polling fix passed all 248 backend tests against PostgreSQL 18 and all 118 frontend tests, plus lint/build. The local Compose stack was rebuilt and live access/CORS checks passed. See [requirements review](REQUIREMENTS-REVIEW.md) for current coverage, the browser-verification limitation, and remaining work. Older results below describe their original runs.
 
 The full backend suite was verified on 10 November 2026 against PostgreSQL 18. Frontend/image verification and the latest Compose/foundation recheck ran on 11 November 2026:
 

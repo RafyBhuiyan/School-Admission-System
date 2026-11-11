@@ -11,6 +11,24 @@ const classId = '22222222-2222-2222-2222-222222222222'
 const studentId = '00000000000000001'
 const epoch = Date.parse('2030-01-01T00:00:00Z')
 const selection: StudentHold = { holdId, classId, className: 'Morning', status: 'HELD', expiresAt: new Date(epoch + 10000).toISOString() }
+
+test('background detail reads stay quiet and a late read cannot undo confirmation', async () => {
+  const state = await setup()
+  await state.controller.open(selection)
+  const pending = deferred<HoldDetails>()
+  const stale = state.fixture()
+  const originalRead = state.api.getHold
+  state.api.getHold = () => pending.promise
+  await state.time.advance(2500)
+  assert.equal(state.controller.getSnapshot().loading, false)
+  assert.equal(state.controller.canAct(), true)
+  state.api.getHold = originalRead
+  assert.equal(await state.controller.confirm(), true)
+  pending.resolve(stale)
+  await flush()
+  assert.equal(state.controller.getSnapshot().details?.status, 'CONFIRMED')
+  state.controller.stop()
+})
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(yes => { resolve = yes })

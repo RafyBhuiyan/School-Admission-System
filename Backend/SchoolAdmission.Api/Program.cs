@@ -69,7 +69,7 @@ builder.Services.AddOptions<CorsOptions>()
         options.AddPolicy(FrontendCorsOptions.PolicyName, policy =>
             policy.WithOrigins(settings.Value.AllowedOrigins)
                 .WithMethods("GET", "POST", "DELETE")
-                .WithHeaders("Content-Type", "X-Student-Id")));
+                .WithHeaders("Content-Type", "X-Student-Id", "X-Admin-Key")));
 
 builder.Services.AddProblemDetails(options =>
     options.CustomizeProblemDetails = context =>

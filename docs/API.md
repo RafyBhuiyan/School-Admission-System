@@ -2,7 +2,7 @@
 
 Base URL: `http://localhost:8080`. Apply the initial migration to the configured PostgreSQL database before calling these endpoints; see [database setup](DATABASE.md#migration-commands).
 
-Class creation/list/details require no authentication or `X-Student-Id` header in this demo. Hold creation requires the student identifier header; it is not authentication.
+Class creation requires `X-Admin-Key`, matching the private server setting `Admin__AccessKey` (at least 32 characters). Missing/incorrect keys return 401; missing/invalid server configuration returns 503 and disables creation. `GET /admin/session` validates that credential and returns 204 with `Cache-Control: no-store`. Class listing/details remain public. Hold creation requires the student identifier header; it is not authentication. CORS permits `X-Admin-Key` only from the configured origins. Never put this key in public `config.json` or browser storage.
 
 ## Create a class
 

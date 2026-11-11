@@ -40,6 +40,7 @@ services:
       <<: *database-environment
       ASPNETCORE_HTTP_PORTS: "${API_HTTP_PORT:-8080}"
       HealthCheck__BaseUrl: "${HealthCheck__BaseUrl:-}"
+      Admin__AccessKey: "${Admin__AccessKey:-}"
       HOLD_DURATION_SECONDS: "${HOLD_DURATION_SECONDS:-600}"
       Expiration__IntervalMilliseconds: "${Expiration__IntervalMilliseconds:-1000}"
       Expiration__BatchSize: "${Expiration__BatchSize:-100}"

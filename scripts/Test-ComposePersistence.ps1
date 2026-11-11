@@ -14,7 +14,7 @@ $ownsProject = $false
 $report = [ordered]@{ Result = 'Running'; Project = $project; Source = 'Clean working-tree export; ignored/generated files and Git metadata excluded'; Checks = @() }
 $controlledKeys = @('COMPOSE_PROJECT_NAME','COMPOSE_FILE','COMPOSE_ENV_FILES','COMPOSE_PROFILES',
     'POSTGRES_DB','POSTGRES_USER','POSTGRES_PASSWORD','FRONTEND_PORT','FRONTEND_ORIGIN',
-    'API_BASE_URL','API_HTTP_PORT','FRONTEND_HTTP_PORT','HealthCheck__BaseUrl',
+    'API_BASE_URL','API_HTTP_PORT','FRONTEND_HTTP_PORT','HealthCheck__BaseUrl','Admin__AccessKey',
     'HOLD_DURATION_SECONDS','Expiration__IntervalMilliseconds','Expiration__BatchSize')
 $savedEnvironment = @{}
 foreach ($key in $controlledKeys) { $savedEnvironment[$key] = [Environment]::GetEnvironmentVariable($key, 'Process') }
@@ -61,6 +61,7 @@ function Get-PublishedBase($Service) {
 function Invoke-Api([string] $Method, [string] $Path, [string] $Student, $Body) {
     $arguments = @{ Method = $Method; Uri = [Uri]::new($script:apiBase, $Path.TrimStart('/')); TimeoutSec = 15 }
     if ($Student) { $arguments.Headers = @{ 'X-Student-Id' = $Student } }
+    if ($Method -eq 'POST' -and $Path -eq 'classes') { $arguments.Headers = @{ 'X-Admin-Key' = $script:model.services.backend.environment.Admin__AccessKey } }
     if ($null -ne $Body) { $arguments.ContentType = 'application/json'; $arguments.Body = $Body | ConvertTo-Json -Compress }
     # Enumerate collection responses consistently before callers build snapshot arrays.
     $response = Invoke-RestMethod @arguments
@@ -108,6 +109,7 @@ try {
     $settings = Get-Content -LiteralPath (Join-Path $sourceRoot '.env.example') -Raw
     $settings = $settings -replace '(?m)^POSTGRES_DB=.*$', 'POSTGRES_DB=school_admission_persistence_tests'
     $settings = $settings -replace '(?m)^POSTGRES_USER=.*$', 'POSTGRES_USER=schema_test'
+    $settings = $settings -replace '(?m)^Admin__AccessKey=.*$', 'Admin__AccessKey=synthetic-compose-administrator-key-32-characters'
     $settings = $settings -replace '(?m)^POSTGRES_PASSWORD=.*$', 'POSTGRES_PASSWORD=synthetic-compose-persistence-password'
     [IO.File]::WriteAllText((Join-Path $sourceRoot '.env'), $settings + "`nCOMPOSE_PROJECT_NAME=$project`n")
     foreach ($key in $controlledKeys) { Remove-Item -LiteralPath "Env:$key" -ErrorAction SilentlyContinue }

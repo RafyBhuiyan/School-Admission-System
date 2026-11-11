@@ -12,6 +12,12 @@ internal sealed class FoundationApiFactory(
     IReadOnlyDictionary<string, string?>? overrides = null,
     bool runExpirationWorker = false) : WebApplicationFactory<Program>
 {
+    internal const string AdminKey = "synthetic-administrator-test-key-32-characters";
+    protected override void ConfigureClient(HttpClient client)
+    {
+        base.ConfigureClient(client);
+        client.DefaultRequestHeaders.Add("X-Admin-Key", AdminKey);
+    }
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
@@ -19,6 +25,7 @@ internal sealed class FoundationApiFactory(
         {
             var settings = new Dictionary<string, string?>
             {
+                ["Admin:AccessKey"] = AdminKey,
                 ["ConnectionStrings:DefaultConnection"] =
                     "Host=localhost;Port=5432;Database=foundation_tests;Username=test;Password=synthetic-test-password",
                 ["Cors:AllowedOrigins:0"] = "http://localhost:5173",
