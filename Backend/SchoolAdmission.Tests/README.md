@@ -53,6 +53,6 @@ dotnet test SchoolAdmission.slnx --configuration Release --filter Category=Postg
 dotnet test SchoolAdmission.slnx --configuration Release --filter Category=PostgreSQLMultiInstance --logger "trx;LogFileName=multi-instance.trx"
 ```
 
-The earlier complete run passed **248 cases**, with zero skips. After adding register and multi-instance coverage, the latest focused run passed **35 cases**, with zero skips. The expanded 256-case suite has not been rerun in full locally.
+The latest complete local run passed **all 256 cases**, with zero skips, against disposable PostgreSQL 18. This includes the administrator register and two-process allocation cases. The [repository audit](../../docs/REPOSITORY-AUDIT.md) records the verification scope.
 
 See [coverage and reproduction](../../docs/TESTING.md), [database account setup](../../docs/DATABASE.md#real-postgresql-schema-checks), and the recorded [single-host](../../docs/evidence/capacity-concurrency.txt) / [two-process](../../docs/evidence/multi-instance-concurrency.txt) output. These concurrency checks establish correctness under contention; broader load testing remains outstanding.

@@ -29,6 +29,10 @@ Configure backend CORS for the frontend origin. The address must be absolute HTT
 
 The browser fetches configuration without caching. Exporting `API_BASE_URL` alone does not change local Vite configuration. Keep this public file free of secrets. Internal listener settings and probes are covered in the [Docker guide](../docs/CONTAINERS.md).
 
+## Language
+
+The header button switches between **English** and **বাংলা** without reloading the app or clearing forms, student selection or admin access. Translations are fixed in `src/translations.ts`; no translation API is used. The preference is stored separately as `school-admission.language`. Blocked storage still allows switching for the current visit. Labels, known messages, statuses, dates and counts follow the selection; user-entered names and IDs stay unchanged.
+
 ## Portal behavior
 
 | Area | Behavior |
@@ -72,6 +76,6 @@ npm run lint
 npm run build
 ```
 
-The latest local run passed **120 tests**, lint and the production build. Tests use Node's built-in runner and TypeScript checking. They cover API contracts, configuration, saved identity, polling, races, application lifecycle and error recovery.
+The latest local run passed **133 tests**, lint and the production build. Tests use Node's built-in runner and TypeScript checking. Vite compiles the actual TSX for isolated English/Bangla rendering checks; no browser profile is accessed. They cover API contracts, configuration, saved identity, polling, races, application lifecycle and error recovery.
 
 [Browser verification](../docs/UI-VERIFICATION.md) records earlier real-API workflows and fault injection. The current admin-panel/filter changes have automated coverage but have not been visually rechecked. Mobile viewport and full browser-process restart checks remain outstanding.

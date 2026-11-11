@@ -29,6 +29,8 @@ Compose startup and the complete class/application persistence cycle across `dow
 
 ## Verification
 
+The final local audit passed all 256 backend cases with zero skips, all 133 frontend cases, lint with zero warnings, and the production build. English/Bangla switching uses fixed translations and a saved preference; isolated rendering tests cover the portal, admin sign-in and startup error in both languages. All 30 clean-source Compose persistence checks passed with synthetic administrator access on separate host ports. See the [audit](REPOSITORY-AUDIT.md) for contract, source/history and publication checks. Older entries below describe their original runs.
+
 Documentation now includes a task-oriented project README, shorter frontend/test guides, architecture and lifecycle diagrams, and the database ERD. Assumptions and AI usage are concise first-person notes with concrete design corrections. Local Markdown links, heading anchors, documented source paths and code fences were checked; this documentation change did not rerun application tests.
 
 The administrator panel and filters passed all 120 frontend tests, lint and the production build. The latest focused backend run passed all 35 cases with zero skips against disposable PostgreSQL 18: class API (23), administrator access (4), application register (6), and separate-process allocation (2). The earlier full run passed all 248 cases then present; the expanded 256-case suite has not been rerun in full. See [requirements review](REQUIREMENTS-REVIEW.md) for current coverage and remaining work. Older results below describe their original runs.

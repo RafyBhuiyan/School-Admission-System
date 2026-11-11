@@ -36,6 +36,8 @@ Stop with `docker compose down`. The named database volume keeps classes and app
 
 ## Using the portal
 
+Use the **বাংলা / English** button in the header to switch the interface. Only these two languages are supported, with fixed translations in code. The browser remembers your choice; names and identifiers stay as entered.
+
 | Student | Administrator |
 | --- | --- |
 | Enter a 17-digit birth registration number. | Click **Admin** and enter your admin code. |
@@ -104,7 +106,7 @@ Local .NET execution needs exported environment variables; it does not load `.en
 | --- | --- |
 | `API_BASE_URL` | Browser-facing API address for the frontend container |
 | `Frontend/public/config.json` | API address for local Vite development |
-| `FRONTEND_PORT` | Portal host port; default 5173 |
+| `FRONTEND_PORT`, `API_PORT` | Portal/API host ports; defaults 5173 and 8080 |
 | `API_HTTP_PORT`, `FRONTEND_HTTP_PORT` | Internal listener ports; default 8080 |
 | `FRONTEND_ORIGIN` | Compose CORS override; otherwise derived from the frontend port |
 | `HOLD_DURATION_SECONDS` | Hold lifetime; default 600 seconds |
@@ -129,14 +131,13 @@ Without that variable, database cases are skipped. In `Frontend`, run `npm test`
 
 | Check | Observed result |
 | --- | --- |
-| Earlier complete backend run | 248 passed, no skips |
-| Latest focused backend run | 35 passed, no skips, including admin register and two-process allocation |
-| Frontend | 120 tests passed; lint and production build passed |
+| Complete backend run | 256 passed, no skips |
+| Frontend | 133 tests passed; lint and production build passed |
 | Two API processes, 100 requests, 10 empty seats | 10 accepted, 90 conflicts |
 | Same burst with 3 held + 2 confirmed seats | 5 accepted, 95 conflicts; final occupancy 10 |
 | Compose recreation | Class/application data survived container replacement |
 
-The backend now contains 256 cases; the complete expanded suite has not been rerun locally. [Concurrency output](docs/evidence/multi-instance-concurrency.txt), [container evidence](docs/CONTAINERS.md#clean-startup-and-volume-persistence) and [verification notes](docs/PROGRESS.md) record the scope of each run. Hosted CI, mobile viewport and full browser-process restart verification remain outstanding.
+[Concurrency output](docs/evidence/multi-instance-concurrency.txt), [container evidence](docs/CONTAINERS.md#clean-startup-and-volume-persistence) and [verification notes](docs/PROGRESS.md) record the scope of each run. Hosted CI, mobile viewport and full browser-process restart verification remain outstanding. The [repository audit](docs/REPOSITORY-AUDIT.md) records local checks and the pending public-access check.
 
 ## Documentation
 

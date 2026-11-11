@@ -1,3 +1,5 @@
+import { LanguageProvider } from './LanguageProvider.tsx'
+import { StartupError } from './StartupError.tsx'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
@@ -11,9 +13,9 @@ async function start() {
   try {
     const config = await loadConfig(`${import.meta.env.BASE_URL}config.json`)
     const api = createAdmissionApi(config.apiBaseUrl)
-    root.render(<StrictMode><ApiProvider api={api}><App /></ApiProvider></StrictMode>)
+    root.render(<StrictMode><LanguageProvider><ApiProvider api={api}><App /></ApiProvider></LanguageProvider></StrictMode>)
   } catch {
-    root.render(<main role="alert"><h1>Unable to start</h1><p>Please refresh and try again. If the problem continues, contact the administrator.</p></main>)
+    root.render(<LanguageProvider><StartupError /></LanguageProvider>)
   }
 }
 void start()

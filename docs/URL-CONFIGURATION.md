@@ -14,7 +14,7 @@ The API resolver uses `HealthCheck:BaseUrl` first, then the configured listeners
 
 ## Intentional addresses remaining
 
-- `.env.example` and `docker-compose.yml` contain configurable local defaults, browser URL/origin fallbacks, and loopback host-port bindings. `API_HTTP_PORT` and `FRONTEND_HTTP_PORT` each drive their service's listener and published target port. The API host port remains 8080.
+- `.env.example` and `docker-compose.yml` contain configurable local defaults, browser URL/origin fallbacks, and loopback host-port bindings. `API_HTTP_PORT` and `FRONTEND_HTTP_PORT` each drive their service's listener and published target port. `API_PORT` controls the API host port (default 8080); changing it also requires a matching browser-facing `API_BASE_URL`.
 - `Frontend/public/config.json` contains the editable development/standalone browser API default; the shared API client already reads this configuration for all eight operations.
 - `Backend/SchoolAdmission.Api/appsettings.json` contains an overridable development CORS origin. `Properties/launchSettings.json` contains development listener profiles, which also supply the API probe's listener configuration when that profile is used.
 - The API Dockerfile's `design_time` connection is a model-generation placeholder used to build the migration bundle, not a runtime database destination.
