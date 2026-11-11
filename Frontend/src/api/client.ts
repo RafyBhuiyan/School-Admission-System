@@ -1,5 +1,6 @@
 import { parseConfig } from '../config.ts'
 import { ApiError, httpError } from './errors.ts'
+import type { AdminApplications, HoldStatus } from './types.ts'
 import { validateResponse } from './responses.ts'
 import type { ResponseShape } from './responses.ts'
 import type { AdmissionClass, ClassSummary, ConfirmedHold, CreateClassRequest, CreatedHold, HoldDetails, StudentHold } from './types.ts'
@@ -14,7 +15,7 @@ export function createAdmissionApi(apiBaseUrl: string, options: { fetcher?: type
 
   async function request<T>(shape: ResponseShape, path: string, method: string, requestOptions: RequestOptions = {}, studentId?: string, body?: CreateClassRequest): Promise<T> {
     const headers = new Headers({ Accept: 'application/json' })
-    if (requestOptions.adminKey && (path === '/classes' && method === 'POST' || path === '/admin/session')) {
+    if (requestOptions.adminKey && (path === '/classes' && method === 'POST' || path === '/admin/session' || path.startsWith('/admin/applications?'))) {
       headers.set('X-Admin-Key', requestOptions.adminKey)
     }
     if (studentId !== undefined) {
@@ -61,7 +62,13 @@ export function createAdmissionApi(apiBaseUrl: string, options: { fetcher?: type
   }
 
   return {
-    verifyAdmin: (adminKey: string) => request<void>('empty', '/admin/session', 'GET', { adminKey }),
+    getAdminApplications: (adminKey: string, filters: { classId?: string; status?: HoldStatus; page?: number }, opts?: RequestOptions) => {
+      const query = new URLSearchParams({ page: String(filters.page ?? 1), pageSize: '25' })
+      if (filters.classId) query.set('classId', id(filters.classId))
+      if (filters.status) query.set('status', filters.status)
+      return request<AdminApplications>('adminApplications', `/admin/applications?${query}`, 'GET', { ...opts, adminKey })
+    },
+    verifyAdmin: (adminKey: string, opts?: RequestOptions) => request<void>('empty', '/admin/session', 'GET', { ...opts, adminKey }),
     createClass: (body: CreateClassRequest, opts?: RequestOptions) => request<AdmissionClass>('class', '/classes', 'POST', opts, undefined, body),
     getClasses: (opts?: RequestOptions) => request<ClassSummary[]>('classes', '/classes', 'GET', opts),
     getClass: (classId: string, opts?: RequestOptions) => request<ClassSummary>('summary', `/classes/${id(classId)}`, 'GET', opts),

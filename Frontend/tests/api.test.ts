@@ -13,6 +13,25 @@ const holdDetails = { holdId, classId, status: 'HELD', expiresAt: '2030-01-01T00
 const createdHold = { ...holdDetails, studentId: '000Student-1' }
 const history = [{ ...holdDetails, className: 'Morning' }]
 
+test('admin application filters use configured base URL and authenticated requests', async () => {
+  const api = createAdmissionApi('http://api.test/prefix', { fetcher: async (url, options) => {
+    const address = new URL(String(url))
+    assert.equal(address.pathname, '/prefix/admin/applications')
+    assert.equal(address.searchParams.get('classId'), classId)
+    assert.equal(address.searchParams.get('status'), 'EXPIRED')
+    assert.equal(address.searchParams.get('page'), '2')
+    assert.equal(new Headers(options?.headers).get('X-Admin-Key'), 'private-test-key')
+    return Response.json({ items: [{ ...holdDetails, className: 'Morning', studentId: 'synthetic', createdAt: holdDetails.serverTime }], total: 26, page: 2, pageSize: 25 })
+  } })
+  const result = await api.getAdminApplications('private-test-key', { classId, status: 'EXPIRED', page: 2 })
+  assert.equal(result.total, 26)
+})
+
+test('malformed admin collections cannot enter the application table', async () => {
+  const api = createAdmissionApi('http://api.test', { fetcher: async () => Response.json({ items: {}, total: 1, page: 1, pageSize: 25 }) })
+  await assert.rejects(api.getAdminApplications('private-test-key', {}), (error: unknown) => error instanceof ApiError && error.kind === 'response')
+})
+
 test('administrator credential is sent only to administrator operations', async () => {
   const seen: Headers[] = []
   const api = createAdmissionApi('http://api.test', { fetcher: async (_url, options) => {

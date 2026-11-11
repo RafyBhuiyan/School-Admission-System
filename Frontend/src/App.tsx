@@ -4,6 +4,7 @@ import { useApi } from './apiContext.ts'
 import { browserStudentStorage, createStudentSession, STUDENT_STORAGE_KEY, validStudentId } from './studentSession.ts'
 import './App.css'
 import { ClassPanel } from './ClassPanel.tsx'
+import { AdminPanel } from './AdminPanel.tsx'
 import { createClassCatalog } from './classCatalog.ts'
 import { createHoldDetails } from './holdDetails.ts'
 import { HoldDetailPanel } from './HoldDetailPanel.tsx'
@@ -12,6 +13,7 @@ const statusNames = { HELD: 'Seat held', CONFIRMED: 'Confirmed', EXPIRED: 'Expir
 
 function App() {
   const api = useApi()
+  const [adminOpen, setAdminOpen] = useState(false)
   const [session] = useState(() => createStudentSession(api, browserStudentStorage()))
   const [catalog] = useState(() => createClassCatalog(api, session))
   const [details] = useState(() => createHoldDetails(api, session, () => Promise.all([catalog.refresh(), session.refresh()])))
@@ -47,8 +49,9 @@ function App() {
 
   return (
     <div className="portal">
-      <header className="site-header"><a className="brand" href="/" aria-label="School admissions home"><span className="brand-mark" aria-hidden="true">S</span><span>School admissions<small>Student portal</small></span></a><span className="header-note">Your next chapter starts here</span></header>
+      <header className="site-header"><a className="brand" href="/" aria-label="School admissions home"><span className="brand-mark" aria-hidden="true">S</span><span>School admissions<small>Student portal</small></span></a><div className="header-actions"><span className="header-note">Your next chapter starts here</span><button type="button" className="admin-trigger" aria-expanded={adminOpen} aria-controls="admin-panel" onClick={() => setAdminOpen(!adminOpen)}>Admin</button></div></header>
       <main>
+        {adminOpen && <AdminPanel catalog={catalog} onClose={() => setAdminOpen(false)} />}
         <div className="intro"><p className="eyebrow">ADMISSION APPLICATIONS</p><h1>A place to begin.</h1><p>Keep track of your student’s applications in one place.</p></div>
         {state.notice && <p className="notice" role="status">{state.notice}</p>}
         {!state.studentId ? (
