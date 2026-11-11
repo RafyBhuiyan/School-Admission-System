@@ -55,7 +55,7 @@ export function createHoldDetails(api: Pick<AdmissionApi, 'getHold' | 'confirmHo
   }
 
   async function refresh(notify = true): Promise<void> {
-    if (!attached || !state.selection || state.loading || state.mutation) return
+    if (!attached || !state.selection || read && !read.signal.aborted || state.mutation) return
     clearTimer(poll); poll = undefined
     const selection = state.selection
     const version = generation
@@ -63,7 +63,7 @@ export function createHoldDetails(api: Pick<AdmissionApi, 'getHold' | 'confirmHo
     read = controller
     const sent = timing.now()
     const previous = state.details?.status
-    update({ loading: true })
+    if (!state.details) update({ loading: true })
     try {
       const details = await api.getHold(selection.holdId, { signal: controller.signal })
       if (!current(version) || controller.signal.aborted) return
@@ -86,7 +86,8 @@ export function createHoldDetails(api: Pick<AdmissionApi, 'getHold' | 'confirmHo
         update({ loading: false, error: errorText(error), ...(missing ? { details: null } : {}) })
       }
     } finally {
-      if (current(version) && visible && !missing && (state.details?.status === 'HELD' || !state.details)) {
+      if (read === controller) read = null
+      if (!controller.signal.aborted && current(version) && visible && !missing && (state.details?.status === 'HELD' || !state.details)) {
         poll = timing.set(() => { poll = undefined; void refresh() }, 2500)
       }
     }
@@ -131,6 +132,7 @@ export function createHoldDetails(api: Pick<AdmissionApi, 'getHold' | 'confirmHo
     const version = generation
     const controller = new AbortController()
     write = controller
+    read?.abort(); read = null
     const holdId = state.selection.holdId, studentId = selectedStudent
     clearTimers()
     update({ mutation: action, actionError: null, message: null })

@@ -11,6 +11,20 @@ const studentId = '00000000000000001'
 const row: ClassSummary = { id, name: 'Morning', totalSeats: 10, heldSeats: 2, confirmedSeats: 3, availableSeats: 5 }
 const hold = { holdId: '22222222-2222-2222-2222-222222222222', classId: id, studentId, status: 'HELD' as const, expiresAt: '2030-01-01T00:00:00Z' }
 const history: StudentHold = { ...hold, className: row.name }
+
+test('background catalog polling keeps existing content and controls steady', async () => {
+  const state = setup()
+  await state.catalog.start()
+  const pending = deferred<ClassSummary[]>()
+  state.api.getClasses = () => pending.promise
+  state.timer()?.()
+  assert.equal(state.catalog.getSnapshot().loading, false)
+  assert.deepEqual(state.catalog.getSnapshot().classes, [row])
+  pending.resolve([{ ...row, availableSeats: 4 }])
+  for (let i = 0; i < 10; i++) await Promise.resolve()
+  assert.equal(state.catalog.getSnapshot().classes[0].availableSeats, 4)
+  state.catalog.stop()
+})
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(yes => { resolve = yes })

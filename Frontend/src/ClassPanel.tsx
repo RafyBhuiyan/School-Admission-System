@@ -3,12 +3,26 @@ import type { SubmitEvent } from 'react'
 import type { createClassCatalog } from './classCatalog.ts'
 import type { StudentHold } from './api/types.ts'
 import type { createStudentSession } from './studentSession.ts'
+import { useApi } from './apiContext.ts'
 
 export function ClassPanel({ student, catalog, onApplied }: { student: ReturnType<typeof createStudentSession>;
   catalog: ReturnType<typeof createClassCatalog>; onApplied: (application: StudentHold) => void }) {
   const state = useSyncExternalStore(catalog.subscribe, catalog.getSnapshot)
   const identity = useSyncExternalStore(student.subscribe, student.getSnapshot)
   const [adminOpen, setAdminOpen] = useState(false)
+  const api = useApi()
+  const [adminKey, setAdminKey] = useState('')
+  const [credential, setCredential] = useState('')
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [signingIn, setSigningIn] = useState(false)
+  async function signIn(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (signingIn) return
+    setSigningIn(true); setAuthError(null)
+    try { await api.verifyAdmin(credential); setAdminKey(credential); setCredential('') }
+    catch { setAuthError('Administrator access could not be verified. Check your access key and try again.'); setCredential('') }
+    finally { setSigningIn(false) }
+  }
   const [name, setName] = useState('')
   const [seats, setSeats] = useState('')
   useEffect(() => {
@@ -20,7 +34,7 @@ export function ClassPanel({ student, catalog, onApplied }: { student: ReturnTyp
   }, [catalog])
   async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (await catalog.create(name, seats)) { setName(''); setSeats('') }
+    if (adminKey && await catalog.create(name, seats, adminKey)) { setName(''); setSeats('') }
   }
   async function apply(classId: string, className: string) {
     if (await catalog.apply(classId)) {
@@ -30,9 +44,18 @@ export function ClassPanel({ student, catalog, onApplied }: { student: ReturnTyp
     }
   }
   return <section className="class-section" aria-labelledby="class-heading">
-    <div className="applications-heading"><div><p className="eyebrow">FIND A PLACE</p><h2 id="class-heading">Admission classes</h2></div><div className="catalog-actions"><button type="button" disabled={state.loading} onClick={() => { void catalog.refresh() }}>Refresh classes</button><button type="button" aria-expanded={adminOpen} aria-controls="create-class" onClick={() => setAdminOpen(!adminOpen)}>{adminOpen ? 'Close class form' : 'Create a class'}</button></div></div>
-    {adminOpen && <form id="create-class" className="class-form" onSubmit={event => { void submit(event) }} noValidate>
-      <div className="class-form-heading"><h3>Create an admission class</h3><p>School administration · demo access</p></div>
+    <div className="applications-heading"><div><p className="eyebrow">FIND A PLACE</p><h2 id="class-heading">Admission classes</h2></div><div className="catalog-actions"><button type="button" disabled={state.loading} onClick={() => { void catalog.refresh() }}>Refresh classes</button><button type="button" disabled={signingIn || state.creating} aria-expanded={adminOpen} aria-controls="admin-access" onClick={() => setAdminOpen(!adminOpen)}>{adminOpen ? 'Close administration' : 'Administrator'}</button></div></div>
+    {adminOpen && <div id="admin-access">
+      {!adminKey ? <form className="class-form" onSubmit={event => { void signIn(event) }}>
+        <h3>Administrator access</h3><label htmlFor="admin-key">Administrator access key</label>
+        <input id="admin-key" type="password" autoComplete="off" value={credential} onChange={event => setCredential(event.target.value)} required maxLength={512} disabled={signingIn} />
+        <p className="field-help">Use the private key supplied by the school administrator. Access lasts until sign-out or page reload.</p>
+        {authError && <p role="alert" className="form-error">{authError}</p>}
+        <button type="submit" className="primary" disabled={signingIn}>{signingIn ? 'Verifying…' : 'Sign in as administrator'}</button>
+      </form> : <button type="button" disabled={state.creating} onClick={() => { setAdminKey(''); setCredential(''); setName(''); setSeats(''); setAuthError(null) }}>Sign out of administration</button>}
+    </div>}
+    {adminOpen && adminKey && <form id="create-class" className="class-form" onSubmit={event => { void submit(event) }} noValidate>
+      <div className="class-form-heading"><h3>Create an admission class</h3><p>School administration</p></div>
       <div><label htmlFor="class-name">Class / shift name</label><input id="class-name" value={name} onChange={event => setName(event.target.value)} placeholder="Class 6 – Morning shift" required aria-invalid={!!state.fieldErrors.name} aria-describedby={state.fieldErrors.name ? 'class-name-error' : undefined} disabled={state.creating} />{state.fieldErrors.name && <p id="class-name-error" className="form-error">{state.fieldErrors.name}</p>}</div>
       <div><label htmlFor="class-seats">Total seats</label><input id="class-seats" type="text" inputMode="numeric" value={seats} onChange={event => setSeats(event.target.value)} placeholder="30" required aria-invalid={!!state.fieldErrors.seats} aria-describedby={state.fieldErrors.seats ? 'class-seats-error' : undefined} disabled={state.creating} />{state.fieldErrors.seats && <p id="class-seats-error" className="form-error">{state.fieldErrors.seats}</p>}</div>
       <button className="primary" type="submit" disabled={state.creating}>{state.creating ? 'Creating…' : 'Create class'}</button>

@@ -77,11 +77,36 @@ The script JSON-escapes the value and rejects missing schemes, empty authorities
 
 ## Verification
 
+### Clean startup and volume persistence
+
+On 11 November 2026, the stack passed a complete recreation test on Docker Desktop Linux/amd64 with Compose 5.7.0. A clean working-tree export excluded Git metadata, environment files, `node_modules`, and local build output. Docker's existing image/build cache was retained. The test used a unique project, a fresh named volume, and synthetic credentials; the root `.env` and existing volumes were untouched.
+
+Both starts used the documented command, `docker compose up --build --wait --wait-timeout 120`. PostgreSQL, backend, and frontend became healthy, and the migration job exited 0. The initially empty database received two classes and four applications through the API: one HELD, two CONFIRMED, and one CANCELLED, across three synthetic students.
+
+`docker compose down` removed all four containers without deleting the volume. After startup, every container ID had changed. Complete database snapshots matched, including class/application IDs, student associations, timestamps, statuses, and migration history. API class summaries and all three students' histories also matched. The active hold kept its original deadline. Seat counts remained:
+
+| Class | Total | Held | Confirmed | Available |
+| --- | --- | --- | --- | --- |
+| Morning | 4 | 1 | 1 | 2 |
+| Afternoon | 2 | 0 | 1 | 1 |
+
+The [generated report](evidence/compose-persistence.json) records all 30 passing assertions and the database snapshot hash. No application or schema changes were needed. Full backend/frontend suites were not rerun for this operational check. A hosted CI run and other CPU architectures remain unverified.
+
+To repeat the check, install PowerShell 7 and Git in addition to Docker, ensure the default published ports are free, and run from the repository root:
+
+```powershell
+pwsh -File scripts/Test-ComposePersistence.ps1
+```
+
+The runner reads HTTP addresses from resolved Compose port mappings. It exports current tracked and non-ignored source files into ignored `artifacts/compose-persistence/<run-id>/source`, writes a synthetic `.env` there, and saves logs plus `report.json` beside that export. The optional `-ReportPath` parameter also writes the report to a chosen existing directory. The runner restores its environment settings afterward. It never stops other projects. Its final cleanup removes only its disposable project and volume, after the ordinary shutdown/recreation comparison. This final cleanup is separate from the persistence test, which never deletes the volume. CI runs the same script and builds both images through Compose.
+
+### Earlier image and readiness checks
+
 The [URL configuration audit](URL-CONFIGURATION.md) subsequently verified both probes on non-default internal ports, shared defaults, and explicit override/failure handling. All 57 targeted backend tests passed, including 24 new address-resolution cases. The existing full backend result below remains historical.
 
 Compose startup was checked on 11 November 2026 in a unique project with a synthetic environment file; the existing root `.env` was untouched. Both the example settings and missing-password rejection were checked. The stack reached PostgreSQL/API/frontend healthy states after the migration service exited 0. An initially absent API image tag also built and started successfully, with identical image IDs for the API and migrator. A password containing semicolon, dollar, and quote characters survived the real container environment and authenticated correctly.
 
-Stopping the test database made the explicit API health probe return 1 and Docker mark the API unhealthy. Restoring PostgreSQL recovered readiness automatically. The browser created a class, applied, confirmed, and displayed history/count updates through the stack; the [Compose preview](evidence/compose-portal.png) shows the result. All 33 backend foundation tests passed after the health-mode change. The unchanged frontend's earlier 115-test result was not rerun. [Startup verification output](evidence/compose-startup.txt) records the results. The isolated test project's containers, network, and volume were removed afterward. Full class/application persistence across a complete `down`/`up` cycle remains unverified.
+Stopping the test database made the explicit API health probe return 1 and Docker mark the API unhealthy. Restoring PostgreSQL recovered readiness automatically. The browser created a class, applied, confirmed, and displayed history/count updates through the stack; the [Compose preview](evidence/compose-portal.png) shows the result. All 33 backend foundation tests passed after the health-mode change. The unchanged frontend's earlier 115-test result was not rerun. [Startup verification output](evidence/compose-startup.txt) records the results. The isolated test project's containers, network, and volume were removed afterward. That earlier run did not include the full recreation test recorded above.
 
 On 11 November 2026, both images built and ran on Docker Desktop Linux/amd64. A disposable PostgreSQL 18 container shared an isolated network with the API. The bundle initialized the schema, and a second run was a no-op. The API answered through its published port; CORS accepted the container-served frontend origin. A real browser created a class, applied, confirmed one synthetic student's admission, and cancelled another's hold. The final counts were total 2, held 0, confirmed 1, available 1. The [container portal preview](evidence/container-portal.png) preserves the result.
 

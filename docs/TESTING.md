@@ -25,7 +25,7 @@ The integration suite runs the actual ASP.NET Core pipeline and EF Core provider
 - A one-second hold that the worker expires without subsequent HTTP requests, followed by retrieval, rejected terminal-state mutations, and reapplication.
 - PostgreSQL triggers deliberately rejecting allocation inserts and confirmation/cancellation updates. Responses must be sanitized 500 Problem Details; failed transactions must leave prior state intact. Removing the trigger permits a successful retry. Triggers exist only in the fixture-owned database and are removed during cleanup.
 
-Existing race tests cover the last seat, duplicate applications, queued confirmations/cancellations, skipped locks, and competing lifecycle mutations. They use in-process hosts with separate database connections. Real-process persistence tests are described below. Broader load, multi-process allocation concurrency, and container deployment tests remain outstanding.
+Existing race tests cover the last seat, duplicate applications, queued confirmations/cancellations, skipped locks, and competing lifecycle mutations. They use in-process hosts with separate database connections. Real-process persistence tests are described below. [Compose startup and volume persistence](CONTAINERS.md#clean-startup-and-volume-persistence) also passed locally and have a repeatable CI runner. Broader load and multi-process allocation concurrency remain outstanding.
 
 ## Capacity bursts
 

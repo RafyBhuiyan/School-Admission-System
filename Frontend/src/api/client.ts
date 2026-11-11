@@ -4,7 +4,7 @@ import { validateResponse } from './responses.ts'
 import type { ResponseShape } from './responses.ts'
 import type { AdmissionClass, ClassSummary, ConfirmedHold, CreateClassRequest, CreatedHold, HoldDetails, StudentHold } from './types.ts'
 
-export interface RequestOptions { signal?: AbortSignal }
+export interface RequestOptions { signal?: AbortSignal; adminKey?: string }
 
 export function createAdmissionApi(apiBaseUrl: string, options: { fetcher?: typeof fetch; timeoutMs?: number } = {}) {
   const base = parseConfig({ API_BASE_URL: apiBaseUrl }).apiBaseUrl
@@ -14,6 +14,9 @@ export function createAdmissionApi(apiBaseUrl: string, options: { fetcher?: type
 
   async function request<T>(shape: ResponseShape, path: string, method: string, requestOptions: RequestOptions = {}, studentId?: string, body?: CreateClassRequest): Promise<T> {
     const headers = new Headers({ Accept: 'application/json' })
+    if (requestOptions.adminKey && (path === '/classes' && method === 'POST' || path === '/admin/session')) {
+      headers.set('X-Admin-Key', requestOptions.adminKey)
+    }
     if (studentId !== undefined) {
       const value = studentId.trim()
       if (!value || value.length > 64 || /[\r\n]/.test(value)) {
@@ -58,6 +61,7 @@ export function createAdmissionApi(apiBaseUrl: string, options: { fetcher?: type
   }
 
   return {
+    verifyAdmin: (adminKey: string) => request<void>('empty', '/admin/session', 'GET', { adminKey }),
     createClass: (body: CreateClassRequest, opts?: RequestOptions) => request<AdmissionClass>('class', '/classes', 'POST', opts, undefined, body),
     getClasses: (opts?: RequestOptions) => request<ClassSummary[]>('classes', '/classes', 'GET', opts),
     getClass: (classId: string, opts?: RequestOptions) => request<ClassSummary>('summary', `/classes/${id(classId)}`, 'GET', opts),

@@ -9,6 +9,7 @@ namespace SchoolAdmission.Api.Controllers;
 public sealed class ClassesController(ClassService classService) : ControllerBase
 {
     [HttpPost]
+    [SchoolAdmission.Api.Common.AdminOnly]
     [ProducesResponseType(typeof(CreateClassResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]

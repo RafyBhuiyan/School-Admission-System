@@ -66,7 +66,7 @@ dotnet ef database update --project Backend/SchoolAdmission.Api
 
 This explicitly applies `20261108192613_InitialAdmissionSchema`. Starting the API does not automatically apply migrations. The backend image includes `/app/migrate` for controlled initialization before API startup; see [container setup](CONTAINERS.md).
 
-Root Compose startup waits for PostgreSQL health, runs a single `migrator` service, then allows the API to start. PostgreSQL 18 data lives in the `postgres-data` named volume mounted at `/var/lib/postgresql`. Ordinary `docker compose down` retains it; the recreation/persistence workflow is still awaiting its dedicated verification.
+Root Compose startup waits for PostgreSQL health, runs a single `migrator` service, then allows the API to start. PostgreSQL 18 data lives in the `postgres-data` named volume mounted at `/var/lib/postgresql`. Ordinary `docker compose down` retains it. A clean-start recreation test preserved two classes, four applications, all stored timestamps/statuses, and migration history; see [volume persistence verification](CONTAINERS.md#clean-startup-and-volume-persistence).
 
 Check the model snapshot and generate a reviewable, idempotent SQL script:
 
@@ -104,4 +104,4 @@ Student application listing filters by the exact student identifier, joins the c
 
 Integration failure tests install temporary PostgreSQL triggers in fixture-owned databases to reject an allocation insert or lifecycle status update. Assertions verify transaction rollback, unchanged historical data, sanitized HTTP errors, and successful retries after removing the trigger. These objects are test-only and are not part of the application migration. See the [integration coverage matrix](TESTING.md).
 
-Persistence tests terminate and restart the built API as separate OS processes against the same fixture database. They compare class/application identities and timestamps, verify retries and ownership checks after restart, and observe the worker releasing a hold that expired during downtime. PostgreSQL remains running throughout; database/container restart and named-volume persistence are separate deployment checks.
+Persistence tests terminate and restart the built API as separate OS processes against the same fixture database. They compare class/application identities and timestamps, verify retries and ownership checks after restart, and observe the worker releasing a hold that expired during downtime. PostgreSQL remains running throughout those tests. The separate [Compose recreation check](CONTAINERS.md#clean-startup-and-volume-persistence) replaces the database container too and verifies named-volume persistence.

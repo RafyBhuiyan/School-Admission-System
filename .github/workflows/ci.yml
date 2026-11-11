@@ -103,8 +103,6 @@ jobs:
           POSTGRES_PASSWORD: ci-compose-validation-password
         run: docker compose config --quiet
 
-      - name: Build API image
-        run: docker build --file Backend/SchoolAdmission.Api/Dockerfile --tag school-admission-api:ci .
-
-      - name: Build frontend image
-        run: docker build --tag school-admission-frontend:ci Frontend
+      - name: Verify clean Compose startup and persistence
+        shell: pwsh
+        run: ./scripts/Test-ComposePersistence.ps1

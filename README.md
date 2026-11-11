@@ -6,7 +6,7 @@ Built with ASP.NET Core (.NET 10), EF Core, PostgreSQL, and a React/TypeScript f
 
 ## Run with Docker
 
-Install Docker with the Compose plugin; no local .NET, Node.js, or PostgreSQL installation is needed. Copy `.env.example` to `.env` if you do not already have one, set `POSTGRES_PASSWORD`, then run from the repository root:
+Install Docker with the Compose plugin; no local .NET, Node.js, or PostgreSQL installation is needed. Copy `.env.example` to `.env` if you do not already have one, set `POSTGRES_PASSWORD` and a private `Admin__AccessKey` of at least 32 characters, then run from the repository root:
 
 ```powershell
 docker compose up --build --wait --wait-timeout 120
@@ -14,7 +14,7 @@ docker compose up --build --wait --wait-timeout 120
 
 Open the portal at `http://localhost:5173`; the API is at `http://localhost:8080`. Startup waits for PostgreSQL, runs the migration bundle once, waits for API readiness, then starts the frontend. The `migrator` service finishing with exit code 0 is expected.
 
-Use `docker compose down` to stop the stack while retaining the named database volume. Compose recreation persistence still awaits its dedicated verification. See [container configuration and verification](docs/CONTAINERS.md) for settings, health checks, and troubleshooting.
+Use `docker compose down` to stop the stack while retaining the named database volume. Class and application data survived a verified full container recreation. See [container configuration and verification](docs/CONTAINERS.md) for settings, health checks, and the repeatable persistence check.
 
 ## Run locally for development
 
@@ -40,7 +40,7 @@ npm run dev
 
 Open `http://localhost:5173` and enter a 17-digit birth registration number. The browser remembers the student and automatically loads their applications on return. History includes held, confirmed, expired, and cancelled applications; it refreshes every 2.5 seconds while a hold remains. Use Change student or Forget this device when appropriate. Edit `Frontend/public/config.json` to set the browser-reachable `API_BASE_URL` (default `http://localhost:8080`); see [frontend setup](Frontend/README.md).
 
-Use Create a class for demo administration. Seat counts refresh every four seconds while the page is visible. Applying opens the application details with a server-synchronized countdown. Confirm simulates payment; Cancel releases the seat. Status changes refresh availability and history, and the backend verifies expiry when the timer reaches zero.
+Open Administrator and enter the private `Admin__AccessKey` from `.env` to create classes. The key stays in browser memory until sign-out or reload; it is never included in public configuration. Class creation is disabled if the server key is missing or shorter than 32 characters. Local .NET execution also needs `Admin__AccessKey` exported. Seat counts refresh quietly every four seconds while the page is visible. Applying opens application details with a server-synchronized countdown. Confirm simulates payment; Cancel releases the seat. Status changes refresh availability and history, and the backend verifies expiry when the timer reaches zero.
 
 ## Container images
 
@@ -93,7 +93,7 @@ Confirmation locks the hold, checks ownership and database time, and transitions
 
 Cancellation returns `204` and releases a valid hold's seat while retaining history. Repeating an owned cancellation also returns `204`; confirmed or expired applications return a conflict.
 
-This demo has no authentication. The student header identifies a student, and hold status is publicly accessible by UUID. Use synthetic identifiers during development. See [API reference](docs/API.md) for response formats and errors, and [assumptions](ASSUMPTIONS.md) for design choices.
+Class creation requires the administrator credential. Student access remains a demo identity model: the student header identifies a student, and hold status is publicly accessible by UUID. Use synthetic identifiers during development. See [API reference](docs/API.md) for response formats and errors, and [assumptions](ASSUMPTIONS.md) for design choices.
 
 ## Tests
 
@@ -112,4 +112,4 @@ Frontend checks run from `Frontend`: `npm test`, `npm run lint`, and `npm run bu
 
 Browser workflow, expiry, polling, continuity, and error-recovery results are recorded in [UI verification](docs/UI-VERIFICATION.md).
 
-GitHub Actions runs backend checks and frontend tests/lint/build on pushes and pull requests. Further details: [test coverage](Backend/SchoolAdmission.Tests/README.md), [database setup](docs/DATABASE.md), [CI](docs/CI.md), [implementation status](docs/PROGRESS.md), and [AI usage](AI_USAGE.md).
+GitHub Actions runs backend checks, frontend tests/lint/build, and Compose startup/persistence checks on pushes and pull requests. Further details: [test coverage](Backend/SchoolAdmission.Tests/README.md), [database setup](docs/DATABASE.md), [CI](docs/CI.md), [implementation status](docs/PROGRESS.md), and [AI usage](AI_USAGE.md).
