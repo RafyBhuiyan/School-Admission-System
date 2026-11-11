@@ -6,3 +6,5 @@ export interface CreatedHold { holdId: string; classId: string; studentId: strin
 export interface HoldDetails { holdId: string; classId: string; status: HoldStatus; expiresAt: string; serverTime: string }
 export interface ConfirmedHold { holdId: string; status: 'CONFIRMED' }
 export interface StudentHold { holdId: string; classId: string; className: string; status: HoldStatus; expiresAt: string }
+export interface AdminApplication extends StudentHold { studentId: string; createdAt: string }
+export interface AdminApplications { items: AdminApplication[]; total: number; page: number; pageSize: number }

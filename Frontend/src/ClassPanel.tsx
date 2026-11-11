@@ -1,30 +1,15 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import type { SubmitEvent } from 'react'
 import type { createClassCatalog } from './classCatalog.ts'
 import type { StudentHold } from './api/types.ts'
 import type { createStudentSession } from './studentSession.ts'
-import { useApi } from './apiContext.ts'
 
 export function ClassPanel({ student, catalog, onApplied }: { student: ReturnType<typeof createStudentSession>;
   catalog: ReturnType<typeof createClassCatalog>; onApplied: (application: StudentHold) => void }) {
   const state = useSyncExternalStore(catalog.subscribe, catalog.getSnapshot)
   const identity = useSyncExternalStore(student.subscribe, student.getSnapshot)
-  const [adminOpen, setAdminOpen] = useState(false)
-  const api = useApi()
-  const [adminKey, setAdminKey] = useState('')
-  const [credential, setCredential] = useState('')
-  const [authError, setAuthError] = useState<string | null>(null)
-  const [signingIn, setSigningIn] = useState(false)
-  async function signIn(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (signingIn) return
-    setSigningIn(true); setAuthError(null)
-    try { await api.verifyAdmin(credential); setAdminKey(credential); setCredential('') }
-    catch { setAuthError('Administrator access could not be verified. Check your access key and try again.'); setCredential('') }
-    finally { setSigningIn(false) }
-  }
-  const [name, setName] = useState('')
-  const [seats, setSeats] = useState('')
+  const [search, setSearch] = useState('')
+  const [availability, setAvailability] = useState('all')
+  const filtered = state.classes.filter(row => row.name.toLowerCase().includes(search.trim().toLowerCase()) && (availability === 'all' || (availability === 'available' ? row.availableSeats > 0 : row.availableSeats === 0)))
   useEffect(() => {
     void catalog.start()
     const visibility = () => catalog.setVisible(document.visibilityState === 'visible')
@@ -32,10 +17,6 @@ export function ClassPanel({ student, catalog, onApplied }: { student: ReturnTyp
     document.addEventListener('visibilitychange', visibility)
     return () => { catalog.stop(); document.removeEventListener('visibilitychange', visibility) }
   }, [catalog])
-  async function submit(event: SubmitEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (adminKey && await catalog.create(name, seats, adminKey)) { setName(''); setSeats('') }
-  }
   async function apply(classId: string, className: string) {
     if (await catalog.apply(classId)) {
       const created = catalog.getSnapshot().createdHold
@@ -44,29 +25,21 @@ export function ClassPanel({ student, catalog, onApplied }: { student: ReturnTyp
     }
   }
   return <section className="class-section" aria-labelledby="class-heading">
-    <div className="applications-heading"><div><p className="eyebrow">FIND A PLACE</p><h2 id="class-heading">Admission classes</h2></div><div className="catalog-actions"><button type="button" disabled={state.loading} onClick={() => { void catalog.refresh() }}>Refresh classes</button><button type="button" disabled={signingIn || state.creating} aria-expanded={adminOpen} aria-controls="admin-access" onClick={() => setAdminOpen(!adminOpen)}>{adminOpen ? 'Close administration' : 'Administrator'}</button></div></div>
-    {adminOpen && <div id="admin-access">
-      {!adminKey ? <form className="class-form" onSubmit={event => { void signIn(event) }}>
-        <h3>Administrator access</h3><label htmlFor="admin-key">Administrator access key</label>
-        <input id="admin-key" type="password" autoComplete="off" value={credential} onChange={event => setCredential(event.target.value)} required maxLength={512} disabled={signingIn} />
-        <p className="field-help">Use the private key supplied by the school administrator. Access lasts until sign-out or page reload.</p>
-        {authError && <p role="alert" className="form-error">{authError}</p>}
-        <button type="submit" className="primary" disabled={signingIn}>{signingIn ? 'Verifying…' : 'Sign in as administrator'}</button>
-      </form> : <button type="button" disabled={state.creating} onClick={() => { setAdminKey(''); setCredential(''); setName(''); setSeats(''); setAuthError(null) }}>Sign out of administration</button>}
-    </div>}
-    {adminOpen && adminKey && <form id="create-class" className="class-form" onSubmit={event => { void submit(event) }} noValidate>
-      <div className="class-form-heading"><h3>Create an admission class</h3><p>School administration</p></div>
-      <div><label htmlFor="class-name">Class / shift name</label><input id="class-name" value={name} onChange={event => setName(event.target.value)} placeholder="Class 6 – Morning shift" required aria-invalid={!!state.fieldErrors.name} aria-describedby={state.fieldErrors.name ? 'class-name-error' : undefined} disabled={state.creating} />{state.fieldErrors.name && <p id="class-name-error" className="form-error">{state.fieldErrors.name}</p>}</div>
-      <div><label htmlFor="class-seats">Total seats</label><input id="class-seats" type="text" inputMode="numeric" value={seats} onChange={event => setSeats(event.target.value)} placeholder="30" required aria-invalid={!!state.fieldErrors.seats} aria-describedby={state.fieldErrors.seats ? 'class-seats-error' : undefined} disabled={state.creating} />{state.fieldErrors.seats && <p id="class-seats-error" className="form-error">{state.fieldErrors.seats}</p>}</div>
-      <button className="primary" type="submit" disabled={state.creating}>{state.creating ? 'Creating…' : 'Create class'}</button>
-    </form>}
+    <div className="applications-heading"><div><p className="eyebrow">FIND A PLACE</p><h2 id="class-heading">Admission classes</h2></div><button type="button" disabled={state.loading} onClick={() => { void catalog.refresh() }}>Refresh classes</button></div>
+    <div className="filter-bar">
+      <div><label htmlFor="class-search">Search class or shift</label><input id="class-search" type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="e.g. Class 6 or Morning" /></div>
+      <div><label htmlFor="class-availability">Availability</label><select id="class-availability" value={availability} onChange={event => setAvailability(event.target.value)}><option value="all">All classes</option><option value="available">Seats available</option><option value="full">Full classes</option></select></div>
+      <button type="button" onClick={() => { setSearch(''); setAvailability('all') }}>Clear filters</button>
+    </div>
+    <p className="muted">Showing {filtered.length} of {state.classes.length} classes</p>
+    {state.classes.length > 0 && filtered.length === 0 && <div className="empty-state"><h3>No matching classes</h3><p>Try another class name or availability filter.</p></div>}
     {state.message && <p className="success-note" role="status">{state.message}</p>}
     {state.mutationError && <p className="error-panel" role="alert">{state.mutationError}</p>}
     {state.error && <div className="error-panel" role="alert"><p>Availability could not be refreshed. {state.error}</p><button type="button" onClick={() => { void catalog.refresh() }}>Try loading classes again</button></div>}
     {state.loading && state.classes.length === 0 && <p className="muted" role="status">Loading classes…</p>}
     {!state.loading && !state.error && state.classes.length === 0 && <div className="empty-state"><h3>No admission classes yet</h3><p>School administrators can create a class to open applications.</p></div>}
     {!identity.studentId && state.classes.length > 0 && <p className="muted">Identify a student above to apply.</p>}
-    <ul className="class-grid">{state.classes.map(row => {
+    <ul className="class-grid">{filtered.map(row => {
       const existing = identity.applications.some(hold => hold.classId === row.id && ['HELD', 'CONFIRMED'].includes(hold.status))
       const disabled = !identity.studentId || identity.phase === 'loading' || row.availableSeats <= 0 || existing || !!state.applyingId || !!state.error
       return <li key={row.id} className="class-card"><div className="class-card-title"><h3>{row.name}</h3><span className={`status ${row.availableSeats > 0 ? 'status-confirmed' : 'status-expired'}`}>{row.availableSeats > 0 ? 'Seats available' : 'Full'}</span></div>

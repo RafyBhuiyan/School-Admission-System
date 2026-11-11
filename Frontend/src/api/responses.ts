@@ -1,6 +1,6 @@
 import { ApiError } from './errors.ts'
 
-export type ResponseShape = 'class' | 'summary' | 'classes' | 'createdHold' | 'hold' | 'confirmedHold' | 'history' | 'empty'
+export type ResponseShape = 'class' | 'summary' | 'classes' | 'createdHold' | 'hold' | 'confirmedHold' | 'history' | 'empty' | 'adminApplications'
 const record = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0
 const count = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
@@ -12,6 +12,7 @@ const hold = (value: unknown) => record(value) && text(value.holdId) && text(val
 
 export function validateResponse(shape: ResponseShape, value: unknown): void {
   const valid = shape === 'class' ? admissionClass(value)
+    : shape === 'adminApplications' ? record(value) && count(value.total) && count(value.page) && value.page > 0 && count(value.pageSize) && value.pageSize > 0 && Array.isArray(value.items) && value.items.every(row => hold(row) && record(row) && text(row.className) && text(row.studentId) && timestamp(row.createdAt))
     : shape === 'summary' ? summary(value)
     : shape === 'classes' ? Array.isArray(value) && value.every(summary)
     : shape === 'hold' ? hold(value) && record(value) && timestamp(value.serverTime)
