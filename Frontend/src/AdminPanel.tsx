@@ -1,3 +1,4 @@
+import { useLanguage } from './languageContext.ts'
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import type { SubmitEvent } from 'react'
 import { useApi } from './apiContext.ts'
@@ -7,6 +8,7 @@ import { ApiError } from './api/errors.ts'
 
 type Catalog = ReturnType<typeof createClassCatalog>
 export function AdminPanel({ catalog, onClose }: { catalog: Catalog; onClose: () => void }) {
+  const { t } = useLanguage()
   const api = useApi()
   const [key, setKey] = useState('')
   const [code, setCode] = useState('')
@@ -27,20 +29,21 @@ export function AdminPanel({ catalog, onClose }: { catalog: Catalog; onClose: ()
     finally { if (!controller.signal.aborted) setBusy(false) }
   }
   return <section id="admin-panel" className="admin-panel" aria-labelledby="admin-heading">
-    <div className="applications-heading"><div><p className="eyebrow">SCHOOL OFFICE</p><h2 id="admin-heading">Administration</h2></div><button type="button" onClick={onClose}>{key ? 'Sign out & close' : 'Close'}</button></div>
+    <div className="applications-heading"><div><p className="eyebrow">{t("SCHOOL OFFICE")}</p><h2 id="admin-heading">{t("Administration")}</h2></div><button type="button" onClick={onClose}>{key ? t('Sign out & close') : t('Close')}</button></div>
     {!key ? <form className="admin-login" onSubmit={event => { void signIn(event) }}>
-      <p>Create admission classes and review student applications.</p>
-      <label htmlFor="admin-code">Admin code</label><input id="admin-code" type="password" autoComplete="off" required maxLength={512} value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
-      {error && <p className="form-error" role="alert">{error}</p>}
-      <button type="submit" className="primary" disabled={busy}>{busy ? 'Checking code…' : 'Continue'}</button>
-      <p className="field-help">For school administrators. Access ends when you close this panel or reload.</p>
+      <p>{t("Create admission classes and review student applications.")}</p>
+      <label htmlFor="admin-code">{t("Admin code")}</label><input id="admin-code" type="password" autoComplete="off" required maxLength={512} value={code} onChange={event => setCode(event.target.value)} disabled={busy} />
+      {error && <p className="form-error" role="alert">{t(error)}</p>}
+      <button type="submit" className="primary" disabled={busy}>{busy ? t('Checking code…') : t('Continue')}</button>
+      <p className="field-help">{t("For school administrators. Access ends when you close this panel or reload.")}</p>
     </form> : <AdminWorkspace adminKey={key} catalog={catalog} onRejected={reject} />}
   </section>
 }
 
 function AdminWorkspace({ adminKey, catalog, onRejected }: { adminKey: string; catalog: Catalog; onRejected: () => void }) {
+  const { t, date, number } = useLanguage()
   const api = useApi()
-  const state = useSyncExternalStore(catalog.subscribe, catalog.getSnapshot)
+  const state = useSyncExternalStore(catalog.subscribe, catalog.getSnapshot, catalog.getSnapshot)
   const [name, setName] = useState('')
   const [seats, setSeats] = useState('')
   const [classId, setClassId] = useState('')
@@ -84,16 +87,16 @@ function AdminWorkspace({ adminKey, catalog, onRejected }: { adminKey: string; c
   }
   return <>
     <form className="class-form" onSubmit={event => { void create(event) }} noValidate>
-      <div className="class-form-heading"><h3>Add an admission class</h3><p>Set the grade, shift and number of available places.</p></div>
-      <div><label htmlFor="admin-class-name">Class / shift name</label><input id="admin-class-name" value={name} onChange={event => setName(event.target.value)} placeholder="Class 6 – Morning shift" disabled={state.creating} aria-invalid={!!state.fieldErrors.name} />{state.fieldErrors.name && <p className="form-error">{state.fieldErrors.name}</p>}</div>
-      <div><label htmlFor="admin-class-seats">Total seats</label><input id="admin-class-seats" inputMode="numeric" value={seats} onChange={event => setSeats(event.target.value)} placeholder="30" disabled={state.creating} aria-invalid={!!state.fieldErrors.seats} />{state.fieldErrors.seats && <p className="form-error">{state.fieldErrors.seats}</p>}</div>
-      <button type="submit" className="primary" disabled={state.creating}>{state.creating ? 'Adding…' : 'Add admission class'}</button>
-      {state.message && <p role="status" className="success-note">{state.message}</p>}{state.mutationError && <p role="alert" className="form-error">{state.mutationError}</p>}
+      <div className="class-form-heading"><h3>{t("Add an admission class")}</h3><p>{t("Set the grade, shift and number of available places.")}</p></div>
+      <div><label htmlFor="admin-class-name">{t("Class / shift name")}</label><input id="admin-class-name" value={name} onChange={event => setName(event.target.value)} placeholder={t("Class 6 – Morning shift")} disabled={state.creating} aria-invalid={!!state.fieldErrors.name} />{state.fieldErrors.name && <p className="form-error">{t(state.fieldErrors.name)}</p>}</div>
+      <div><label htmlFor="admin-class-seats">{t("Total seats")}</label><input id="admin-class-seats" inputMode="numeric" value={seats} onChange={event => setSeats(event.target.value)} placeholder="30" disabled={state.creating} aria-invalid={!!state.fieldErrors.seats} />{state.fieldErrors.seats && <p className="form-error">{t(state.fieldErrors.seats)}</p>}</div>
+      <button type="submit" className="primary" disabled={state.creating}>{state.creating ? t('Adding…') : t('Add admission class')}</button>
+      {state.message && <p role="status" className="success-note">{t(state.message)}</p>}{state.mutationError && <p role="alert" className="form-error">{t(state.mutationError)}</p>}
     </form>
-    <div className="applications-heading"><div><p className="eyebrow">APPLICATION REGISTER</p><h3>Student applications</h3></div><button type="button" disabled={loading} onClick={() => { resetView(); setReload(value => value + 1) }}>Refresh applications</button></div>
-    <div className="filter-bar"><div><label htmlFor="admin-class-filter">Admission class</label><select id="admin-class-filter" value={classId} onChange={event => { resetView(); setClassId(event.target.value); setPage(1) }}><option value="">All classes</option>{state.classes.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></div><div><label htmlFor="admin-status-filter">Application status</label><select id="admin-status-filter" value={status} onChange={event => { resetView(); setStatus(event.target.value as HoldStatus | ''); setPage(1) }}><option value="">All statuses</option><option value="HELD">Seat held</option><option value="CONFIRMED">Confirmed</option><option value="EXPIRED">Expired</option><option value="CANCELLED">Cancelled</option></select></div><button type="button" onClick={() => { setReload(value => value + 1); resetView(); setClassId(''); setStatus(''); setPage(1) }}>Clear filters</button></div>
-    {error && <p role="alert" className="error-panel">{error}</p>}
-    {loading && <p role="status" className="muted">Loading applications…</p>}
-    {result && <><p className="muted">{result.total} matching applications · newest first</p><div className="table-scroll"><table className="admin-table"><caption className="sr-only">Applications matching the selected filters</caption><thead><tr><th>Student ID</th><th>Class / shift</th><th>Status</th><th>Applied</th><th>Hold deadline</th></tr></thead><tbody>{result.items.map(row => <tr key={row.holdId}><td className="student-number">{row.studentId}</td><td>{row.className}</td><td><span className={`status status-${row.status.toLowerCase()}`}>{row.status}</span></td><td>{new Date(row.createdAt).toLocaleString()}</td><td>{new Date(row.expiresAt).toLocaleString()}</td></tr>)}</tbody></table></div>{result.items.length === 0 && <div className="empty-state"><h3>No matching applications</h3><p>Try another class or status filter.</p></div>}<div className="pagination"><button type="button" disabled={page <= 1 || loading} onClick={() => { resetView(); setPage(value => value - 1) }}>Previous</button><span>Page {page} of {Math.max(1, Math.ceil(result.total / result.pageSize))}</span><button type="button" disabled={page * result.pageSize >= result.total || loading} onClick={() => { resetView(); setPage(value => value + 1) }}>Next</button></div></>}
+    <div className="applications-heading"><div><p className="eyebrow">{t("APPLICATION REGISTER")}</p><h3>{t("Student applications")}</h3></div><button type="button" disabled={loading} onClick={() => { resetView(); setReload(value => value + 1) }}>{t("Refresh applications")}</button></div>
+    <div className="filter-bar"><div><label htmlFor="admin-class-filter">{t("Admission class")}</label><select id="admin-class-filter" value={classId} onChange={event => { resetView(); setClassId(event.target.value); setPage(1) }}><option value="">{t("All classes")}</option>{state.classes.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></div><div><label htmlFor="admin-status-filter">{t("Application status")}</label><select id="admin-status-filter" value={status} onChange={event => { resetView(); setStatus(event.target.value as HoldStatus | ''); setPage(1) }}><option value="">{t("All statuses")}</option><option value="HELD">{t("Seat held")}</option><option value="CONFIRMED">{t("Confirmed")}</option><option value="EXPIRED">{t("Expired")}</option><option value="CANCELLED">{t("Cancelled")}</option></select></div><button type="button" onClick={() => { setReload(value => value + 1); resetView(); setClassId(''); setStatus(''); setPage(1) }}>{t("Clear filters")}</button></div>
+    {error && <p role="alert" className="error-panel">{t(error)}</p>}
+    {loading && <p role="status" className="muted">{t("Loading applications…")}</p>}
+    {result && <><p className="muted">{t('{total} matching applications · newest first', { total: number(result.total) })}</p><div className="table-scroll"><table className="admin-table"><caption className="sr-only">{t("Applications matching the selected filters")}</caption><thead><tr><th>{t("Student ID")}</th><th>{t("Class / shift")}</th><th>{t("Status")}</th><th>{t("Applied")}</th><th>{t("Hold deadline")}</th></tr></thead><tbody>{result.items.map(row => <tr key={row.holdId}><td className="student-number">{row.studentId}</td><td>{row.className}</td><td><span className={`status status-${row.status.toLowerCase()}`}>{t({ HELD: 'Seat held', CONFIRMED: 'Confirmed', EXPIRED: 'Expired', CANCELLED: 'Cancelled' }[row.status])}</span></td><td>{date(row.createdAt)}</td><td>{date(row.expiresAt)}</td></tr>)}</tbody></table></div>{result.items.length === 0 && <div className="empty-state"><h3>{t("No matching applications")}</h3><p>{t("Try another class or status filter.")}</p></div>}<div className="pagination"><button type="button" disabled={page <= 1 || loading} onClick={() => { resetView(); setPage(value => value - 1) }}>{t("Previous")}</button><span>{t('Page {page} of {total}', { page: number(page), total: number(Math.max(1, Math.ceil(result.total / result.pageSize))) })}</span><button type="button" disabled={page * result.pageSize >= result.total || loading} onClick={() => { resetView(); setPage(value => value + 1) }}>{t("Next")}</button></div></>}
   </>
 }

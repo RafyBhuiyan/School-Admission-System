@@ -46,7 +46,7 @@ services:
       Expiration__BatchSize: "${Expiration__BatchSize:-100}"
       Cors__AllowedOrigins__0: "${FRONTEND_ORIGIN:-http://localhost:${FRONTEND_PORT:-5173}}"
     ports:
-      - "127.0.0.1:8080:${API_HTTP_PORT:-8080}"
+      - "127.0.0.1:${API_PORT:-8080}:${API_HTTP_PORT:-8080}"
     depends_on:
       postgres:
         condition: service_healthy

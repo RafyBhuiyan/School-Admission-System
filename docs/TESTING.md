@@ -25,13 +25,25 @@ The integration suite runs the actual ASP.NET Core pipeline and EF Core provider
 - A one-second hold that the worker expires without subsequent HTTP requests, followed by retrieval, rejected terminal-state mutations, and reapplication.
 - PostgreSQL triggers deliberately rejecting allocation inserts and confirmation/cancellation updates. Responses must be sanitized 500 Problem Details; failed transactions must leave prior state intact. Removing the trigger permits a successful retry. Triggers exist only in the fixture-owned database and are removed during cleanup.
 
-Existing race tests cover the last seat, duplicate applications, queued confirmations/cancellations, skipped locks, and competing lifecycle mutations. They use in-process hosts with separate database connections. Real-process persistence tests are described below. [Compose startup and volume persistence](CONTAINERS.md#clean-startup-and-volume-persistence) also passed locally and have a repeatable CI runner. Broader load and multi-process allocation concurrency remain outstanding.
+Existing race tests cover the last seat, duplicate applications, queued confirmations/cancellations, skipped locks, and competing lifecycle mutations. Separate-process allocation and persistence tests are described below. [Compose startup and volume persistence](CONTAINERS.md#clean-startup-and-volume-persistence) also passed locally and have a repeatable CI runner. Broader load testing remains outstanding.
 
 ## Capacity bursts
 
 `CapacityConcurrencyTests` sends 100 distinct-student HTTP requests to a class with 10 seats. The two scenarios begin with no applications, or with three active holds and two confirmations. A shared start gate launches requests while the class row is locked; observed PostgreSQL blocking sessions confirm contention before the lock is released. The host uses a 20-connection pool to bound database resource use while all 100 HTTP requests remain in flight or queued.
 
 Assertions check the exact number of 201/409 responses, unique successful hold IDs, response-to-database matches, persisted active/confirmed counts, distinct student counts, capacity invariants, and the class summary. The worker is disabled for these allocation tests; separate suites verify its behavior. Results and observed blocking counts are preserved in the [actual output](evidence/capacity-concurrency.txt), extracted from the local TRX report. This is a correctness test, not a throughput benchmark.
+
+## Allocation across two API processes
+
+`MultiInstanceConcurrencyTests` starts two real API processes on different ephemeral loopback ports against one fixture database. Both run in Production mode with their expiration workers enabled. Each process has a 10-connection pool. Each receives 50 requests from one shared start gate; PostgreSQL must show blocked allocation sessions from both processes before the test releases the class-row lock.
+
+The empty class accepted 10 requests and rejected 90 with 409. With three existing holds and two confirmations, it accepted five and rejected 95. Both cases persisted exactly 10 occupied seats for distinct students. Both API summaries agreed, and successful response IDs and expiry timestamps matched the stored rows. The [actual output](evidence/multi-instance-concurrency.txt) includes each process's results. This verifies capacity under contention on one machine; it is not a throughput or distributed-network benchmark.
+
+With `SCHEMA_TEST_CONNECTION_STRING` configured, run from the repository root:
+
+```powershell
+dotnet test SchoolAdmission.slnx --configuration Release --filter Category=PostgreSQLMultiInstance --logger "trx;LogFileName=multi-instance.trx"
+```
 
 ## Lifecycle and process restarts
 

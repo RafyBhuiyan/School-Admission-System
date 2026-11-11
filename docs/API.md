@@ -4,6 +4,12 @@ Base URL: `http://localhost:8080`. Apply the initial migration to the configured
 
 Class creation requires `X-Admin-Key`, matching the private server setting `Admin__AccessKey` (at least 32 characters). Missing/incorrect keys return 401; missing/invalid server configuration returns 503 and disables creation. `GET /admin/session` validates that credential and returns 204 with `Cache-Control: no-store`. Class listing/details remain public. Hold creation requires the student identifier header; it is not authentication. CORS permits `X-Admin-Key` only from the configured origins. Never put this key in public `config.json` or browser storage.
 
+## Administrator application register
+
+`GET /admin/applications` requires `X-Admin-Key`. It returns `{ items, total, page, pageSize }`; each item contains `holdId`, `classId`, `className`, `studentId`, `status`, `createdAt`, and `expiresAt`. Responses disable caching. Student identifiers are never query parameters.
+
+Optional filters are `classId` (UUID), `status` (`HELD`, `CONFIRMED`, `EXPIRED`, `CANCELLED`), `page` (1–100000, default 1), and `pageSize` (1–100, default 25). Invalid values return 400; missing/incorrect admin credentials return 401. Results are ordered newest first, then by hold ID. Overdue HELD rows appear as EXPIRED and match that filter before the worker updates their stored status. One database clock value is captured for the count and page queries; concurrent changes can still occur between those reads.
+
 ## Create a class
 
 `POST /classes` with `Content-Type: application/json`:
@@ -61,7 +67,7 @@ Example `201 Created` response:
 }
 ```
 
-The header is trimmed, required, and limited to 64 characters after trimming. Case and leading zeros are preserved. Synthetic IDs are accepted; only the future React input enforces 17 digits. Multiple header values are rejected. The response contains the five fields above.
+The header is trimmed, required, and limited to 64 characters after trimming. Case and leading zeros are preserved. Synthetic IDs are accepted; the React student form enforces 17 digits. Multiple header values are rejected. The response contains the five fields above.
 
 `HOLD_DURATION_SECONDS` defaults to 600 when unset. Invalid, nonpositive, or over-32-bit integer settings fail startup. Creation uses a read-committed transaction and a parameterized `SELECT ... FOR UPDATE` on the class row. After locking, it captures PostgreSQL `clock_timestamp()`, conditionally expires overdue `HELD` rows in that class, checks the student's existing active/confirmed application, counts occupied seats, and inserts only if capacity remains. Cleanup, the new hold, and the captured-time-plus-duration expiry commit together. EF Core handles the cleanup, checks, and insertion.
 

@@ -13,7 +13,7 @@ $logPath = Join-Path $runRoot 'docker.log'
 $ownsProject = $false
 $report = [ordered]@{ Result = 'Running'; Project = $project; Source = 'Clean working-tree export; ignored/generated files and Git metadata excluded'; Checks = @() }
 $controlledKeys = @('COMPOSE_PROJECT_NAME','COMPOSE_FILE','COMPOSE_ENV_FILES','COMPOSE_PROFILES',
-    'POSTGRES_DB','POSTGRES_USER','POSTGRES_PASSWORD','FRONTEND_PORT','FRONTEND_ORIGIN',
+    'POSTGRES_DB','POSTGRES_USER','POSTGRES_PASSWORD','FRONTEND_PORT','API_PORT','FRONTEND_ORIGIN',
     'API_BASE_URL','API_HTTP_PORT','FRONTEND_HTTP_PORT','HealthCheck__BaseUrl','Admin__AccessKey',
     'HOLD_DURATION_SECONDS','Expiration__IntervalMilliseconds','Expiration__BatchSize')
 $savedEnvironment = @{}
@@ -23,6 +23,15 @@ function Assert-Check([bool] $Condition, [string] $Message) {
     if (-not $Condition) { throw $Message }
     $report.Checks += $Message
     Write-Host "PASS: $Message"
+}
+
+function Get-FreePort {
+    $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback, 0)
+    try {
+        $listener.Start()
+        return $listener.LocalEndpoint.Port
+    }
+    finally { $listener.Stop() }
 }
 
 function Invoke-Docker([string[]] $DockerArguments, [switch] $Capture) {
@@ -114,6 +123,11 @@ try {
     [IO.File]::WriteAllText((Join-Path $sourceRoot '.env'), $settings + "`nCOMPOSE_PROJECT_NAME=$project`n")
     foreach ($key in $controlledKeys) { Remove-Item -LiteralPath "Env:$key" -ErrorAction SilentlyContinue }
     $env:COMPOSE_PROJECT_NAME = $project
+    $apiPort = Get-FreePort
+    do { $frontendPort = Get-FreePort } while ($frontendPort -eq $apiPort)
+    $env:API_PORT = [string]$apiPort
+    $env:FRONTEND_PORT = [string]$frontendPort
+    $env:API_BASE_URL = "http://localhost:$apiPort"
     Push-Location $sourceRoot
     try {
         Invoke-Docker -DockerArguments @('compose','config','--quiet')

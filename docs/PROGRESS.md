@@ -3,6 +3,7 @@
 ## Available
 
 - Administrator-only class creation with a private server key and an in-memory browser sign-in. Missing configuration fails closed. This supersedes the earlier unauthenticated demo assumption.
+- An Admin button opens the code prompt, class creation and a paginated application register with class/status filters. Public classes support name/shift search and availability filters.
 - Quiet background catalog/detail refreshes preserve content and action states. Starting a mutation aborts an older detail read so its late response cannot overwrite the result.
 
 - Validated configuration, CORS, Problem Details, and development Swagger/OpenAPI.
@@ -28,7 +29,13 @@ Compose startup and the complete class/application persistence cycle across `dow
 
 ## Verification
 
-The latest administrator/polling fix passed all 248 backend tests against PostgreSQL 18 and all 118 frontend tests, plus lint/build. The local Compose stack was rebuilt and live access/CORS checks passed. See [requirements review](REQUIREMENTS-REVIEW.md) for current coverage, the browser-verification limitation, and remaining work. Older results below describe their original runs.
+The final local audit passed all 256 backend cases with zero skips, all 133 frontend cases, lint with zero warnings, and the production build. English/Bangla switching uses fixed translations and a saved preference; isolated rendering tests cover the portal, admin sign-in and startup error in both languages. All 30 clean-source Compose persistence checks passed with synthetic administrator access on separate host ports. See the [audit](REPOSITORY-AUDIT.md) for contract, source/history and publication checks. Older entries below describe their original runs.
+
+Documentation now includes a task-oriented project README, shorter frontend/test guides, architecture and lifecycle diagrams, and the database ERD. Assumptions and AI usage are concise first-person notes with concrete design corrections. Local Markdown links, heading anchors, documented source paths and code fences were checked; this documentation change did not rerun application tests.
+
+The administrator panel and filters passed all 120 frontend tests, lint and the production build. The latest focused backend run passed all 35 cases with zero skips against disposable PostgreSQL 18: class API (23), administrator access (4), application register (6), and separate-process allocation (2). The earlier full run passed all 248 cases then present; the expanded 256-case suite has not been rerun in full. See [requirements review](REQUIREMENTS-REVIEW.md) for current coverage and remaining work. Older results below describe their original runs.
+
+Two real API processes on different ports shared one database and each received 50 concurrent requests. PostgreSQL blocking sessions confirmed contention from both processes before release. An empty 10-seat class produced 10 created holds and 90 conflicts; a class with three held and two confirmed seats produced five created holds and 95 conflicts. Persisted occupancy was 10 and both API summaries agreed in each case. The [recorded output](evidence/multi-instance-concurrency.txt) was extracted from the successful TRX report. The test owned and removed its processes and disposable database container; the user's Compose data was untouched.
 
 The full backend suite was verified on 10 November 2026 against PostgreSQL 18. Frontend/image verification and the latest Compose/foundation recheck ran on 11 November 2026:
 
@@ -84,7 +91,7 @@ Restart tests launch the compiled API in Production mode on ephemeral loopback p
 
 A separate five-second hold expires while the API is stopped. Before restart it remains stored as HELD; after restart, database-only polling observes EXPIRED before any student request. Another student then obtains the released seat, while the expired application remains historical and cannot be confirmed/cancelled. Existing microsecond-boundary, post-lock-time, ownership, and retry suites passed alongside these additions. No production or schema changes were required.
 
-The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Latest results are saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/lifecycle-restart.trx`. No hosted CI run was performed during this verification. Broader load and multi-process allocation concurrency remain outstanding. Subsequent container deployment checks are recorded below.
+The suite used fixture-owned databases in a disposable PostgreSQL container, which was removed with its volume after verification. Results were saved to the ignored `Backend/SchoolAdmission.Tests/TestResults/lifecycle-restart.trx`. No hosted CI run was performed during this verification. Separate-process allocation was subsequently verified above; broader load testing remains outstanding. Subsequent container deployment checks are recorded below.
 
 The frontend loads `config.json` before rendering and initializes the shared API provider. Its client sends student IDs only in headers, omits credentials, disables caching/redirects, supports aborts and a 15-second timeout, validates successful response shapes, and normalizes Problem Details without exposing raw failure bodies. Mutations are not automatically retried. Its latest full check passed 115 tests plus build/lint; frontend code was unchanged for Compose. The new backend health-probe entry point passed 33 foundation tests and live failure/recovery checks. The 220-case full backend result above is from the preceding full verification and was not rerun here.
 
