@@ -115,3 +115,9 @@ All 115 frontend tests and lint passed inside the pinned Linux Node build stage.
 The minimal ASP.NET image lacks the optional Kerberos library. Npgsql logged a GSSAPI probe warning but connected successfully with the demo's password authentication; Kerberos authentication is not configured or verified. Npgsql's [GSS encryption notes](https://www.npgsql.org/doc/release-notes/10.0.html) explain its preferred-mode fallback. The local Windows image-build check also reported unavailable NuGet vulnerability metadata; the container restore and publish completed successfully. The prior full backend suite passed 220 tests. Other CPU architectures, mobile viewport, and a full browser-process restart remain unverified. Image smoke-test containers/network were removed after verification; built local images were retained.
 
 The final local audit repeated all 30 checks with administrator access enabled and isolated host ports. The [audit report](evidence/repository-audit-compose.json) records that run; it used a clean working-tree export and cached build layers, not a remote Git clone or an empty Docker cache.
+
+### PostgreSQL connection messages
+
+The local Compose connection explicitly sets `GSS Encryption Mode=Disable` for both the API and migrator because this database uses password authentication. Npgsql 10 otherwise attempts GSSAPI negotiation and can print `Cannot load library libgssapi_krb5.so.2` in the minimal .NET image before falling back successfully. This setting leaves TLS configuration independent. See the [Npgsql release note](https://www.npgsql.org/doc/release-notes/10.0.html). After applying the setting, the recreated migrator exited with code 0 and both migrator/backend logs were free of the missing-library warning.
+
+EF Core `Executed DbCommand` messages during migration are normal informational logs. The migrator exiting with code 0 means its work finished successfully.

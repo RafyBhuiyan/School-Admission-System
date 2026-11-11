@@ -9,7 +9,7 @@ flowchart TB
     Browser[Browser] -->|Load portal and public config| Web[Nginx / React]
     Browser -->|HTTP requests| Controllers[API controllers]
     Controllers --> Services[ClassService / HoldService]
-    Controllers --> Admin[Admin credential check / register query]
+    Controllers --> Admin[AdminApplicationService]
     Services --> EF[Scoped EF Core AppDbContext]
     Admin --> EF
     Worker[Hosted expiration worker] --> Expiry[HoldExpirationService]
@@ -27,11 +27,11 @@ Compose waits for PostgreSQL health, runs the migration bundle, waits for databa
 | `Frontend/src/studentSession.ts` | Saved student selection and server-fetched history |
 | `Frontend/src/classCatalog.ts`, `holdDetails.ts` | Catalog and detail state, polling and mutations |
 | `Backend/SchoolAdmission.Api/Controllers/` | HTTP contracts, headers and response mapping |
-| `Backend/SchoolAdmission.Api/Services/` | Allocation, summaries, lifecycle and batch expiration |
+| `Backend/SchoolAdmission.Api/Services/` | Allocation, summaries, admin application register, lifecycle and batch expiration |
 | `Backend/SchoolAdmission.Api/Data/` | EF mappings, migrations and PostgreSQL constraints |
 | `Backend/SchoolAdmission.Api/BackgroundServices/` | Scheduled expiration work |
 
-Services use the scoped `AppDbContext` directly. EF Core handles normal reads and writes. Parameterized SQL is used where PostgreSQL-specific locking or wall-clock time is needed; there is no extra repository layer.
+Services use the scoped `AppDbContext` directly. The administrator service owns filter validation, effective expiry, ordering and pagination; its controller maps results to HTTP responses, while `AdminOnly` enforces access. EF Core handles normal reads and writes. Parameterized SQL is used where PostgreSQL-specific locking or wall-clock time is needed; there is no extra repository layer.
 
 ## Allocation transaction
 

@@ -44,15 +44,26 @@ public sealed class AdminApplicationsTests(PostgreSqlSchemaFixture database) : I
             new AdmissionHold { AdmissionClass = day, ClassId = day.Id, StudentId = "synthetic-confirmed",
                 Status = AdmissionHoldStatus.CONFIRMED, ConfirmedAt = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddMinutes(10) });
         await context.SaveChangesAsync();
+        await context.Entry(expired).ReloadAsync();
         using var factory = new FoundationApiFactory(overrides: new Dictionary<string, string?> { ["ConnectionStrings:DefaultConnection"] = database.ConnectionString });
         using var client = factory.CreateClient();
         using var response = await client.GetAsync($"/admin/applications?classId={morning.Id}&status=EXPIRED");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.True(response.Headers.CacheControl?.NoStore);
         using var data = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(new[] { "items", "page", "pageSize", "total" },
+            data.RootElement.EnumerateObject().Select(property => property.Name).OrderBy(name => name).ToArray());
+        Assert.Equal(1, data.RootElement.GetProperty("page").GetInt32());
+        Assert.Equal(25, data.RootElement.GetProperty("pageSize").GetInt32());
         Assert.Equal(1, data.RootElement.GetProperty("total").GetInt32());
         var item = Assert.Single(data.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal(new[] { "classId", "className", "createdAt", "expiresAt", "holdId", "status", "studentId" },
+            item.EnumerateObject().Select(property => property.Name).OrderBy(name => name).ToArray());
         Assert.Equal(expired.Id, item.GetProperty("holdId").GetGuid());
+        Assert.Equal(morning.Id, item.GetProperty("classId").GetGuid());
+        Assert.Equal(morning.Name, item.GetProperty("className").GetString());
+        Assert.Equal(expired.CreatedAt, item.GetProperty("createdAt").GetDateTime());
+        Assert.Equal(expired.ExpiresAt, item.GetProperty("expiresAt").GetDateTime());
         Assert.Equal("EXPIRED", item.GetProperty("status").GetString());
         Assert.Equal("synthetic-expired", item.GetProperty("studentId").GetString());
         using var first = JsonDocument.Parse(await client.GetStringAsync("/admin/applications?pageSize=1"));
@@ -61,5 +72,7 @@ public sealed class AdminApplicationsTests(PostgreSqlSchemaFixture database) : I
         Assert.NotEqual(first.RootElement.GetProperty("items")[0].GetProperty("holdId").GetString(), second.RootElement.GetProperty("items")[0].GetProperty("holdId").GetString());
         using var held = JsonDocument.Parse(await client.GetStringAsync($"/admin/applications?classId={morning.Id}&status=HELD"));
         Assert.Equal(1, held.RootElement.GetProperty("total").GetInt32());
+        await context.Entry(expired).ReloadAsync();
+        Assert.Equal(AdmissionHoldStatus.HELD, expired.Status);
     }
 }
