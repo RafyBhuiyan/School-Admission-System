@@ -1,21 +1,15 @@
 # AI usage
 
-I planned the project and used OpenAI Codex to help with scaffolding, EF mappings and migrations, backend/frontend API code, tests, and documentation drafts. I made the design choices and reviewed the suggestions against the assignment.
+I planned the project and used OpenAI Codex for scaffolding, EF mappings, backend/frontend implementation, tests and documentation drafts. That assistance covered substantial code. My role was to set the requirements, question design choices and request corrections. The source and recorded test results are the basis for reviewing the implementation.
 
-During the initial review, I corrected three suggestions:
+Three decisions came from checking the initial suggestions against the assignment:
 
-- **Browser persistence:** The AI-assisted draft suggested avoiding `localStorage` for privacy. I overruled that after checking assignment section 1.5: ongoing applications must remain visible after closing and reopening the browser. I kept persistence in the design, with a Forget This Device action and an explicit shared-device privacy trade-off.
-- **Expiry after lock waits:** I changed the expiry design from `NOW()` to `clock_timestamp()`. PostgreSQL fixes `NOW()` at transaction start, so a request waiting on a `FOR UPDATE` lock could otherwise use stale time. The service reads fresh database time after acquiring the lock.
-- **Student-ID validation:** The initial suggestion put a strict 17-digit regex on the backend too. I kept that requirement for the planned React input but changed the API rule to trimmed, non-empty text up to 64 characters, stored in `VARCHAR(64)`. This accepts evaluator IDs such as `student-1` and preserves leading zeros and case.
+- **Browser persistence:** The draft avoided localStorage for privacy. I overruled that after checking section 1.5, which requires ongoing applications to remain visible after closing and reopening the browser. I kept the saved student ID, a shared-device notice and Forget This Device; application state is fetched from the API.
+- **Time after a lock wait:** I replaced `NOW()` with `clock_timestamp()`. PostgreSQL fixes `NOW()` at transaction start, so a request that waits on `FOR UPDATE` could otherwise check expiry against stale time. The implementation reads time after acquiring the lock.
+- **Student-ID validation:** The draft put a strict 17-digit regex on the API. I kept that in the student form but changed the backend rule to non-empty text up to 64 characters, stored as `VARCHAR(64)`. This accepts synthetic evaluator IDs such as `student-1` and preserves leading zeros.
 
-There were implementation corrections too. Adding EF's design package exposed a relational-package version conflict; the packages were aligned at 10.0.8. A generated schema test expected SQLSTATE `23503` for restricted deletion, but PostgreSQL returned `23001`; the expectation was corrected.
+I also questioned the handwritten seat-summary SQL. It was replaced with EF Core LINQ while retaining the database clock expression. That refactor initially failed six API tests because EF could not translate filtering/ordering after the record constructor; moving those operations before projection fixed it.
 
-I also questioned the handwritten seat-summary SQL. It was replaced with EF Core LINQ, keeping only the database clock expression. The first refactor failed six API tests because EF could not translate filtering/ordering after the record constructor; moving those operations before the response projection fixed it.
+Later reviews led to practical changes: I challenged fixed probe URLs so they reuse listener configuration, requested quiet refreshes after noticing the page blink, and changed class creation from the original open demo endpoint to an API-enforced admin check. The admin code stays out of public frontend configuration.
 
-For the countdown, I kept the backend authoritative: local zero disables actions and triggers a read, rather than declaring the hold expired. I used server time with monotonic elapsed time and deducted request transit time. Tests also check that a lost confirmation response cannot cause an automatic second write.
-
-The history review caught another gap: polling the open detail panel left the list stale when details were closed. I added independent list refresh while any hold remains, with quiet background reads and cancellation on student changes.
-
-During UI checks, I sent a JSON object where the class list should be an array and got a blank screen. The client was casting JSON to TypeScript types without checking it. I added runtime response validation and nine regression cases, then repeated the fault and recovery checks. I also corrected a stale success message that still said a seat was held after confirmation or cancellation.
-
-I questioned the fixed health-probe URLs. Both probes now reuse listener settings; the browser-facing API URL stays separate. I also passed the database password separately so semicolons cannot alter the connection string. For persistence, I compared complete database rows and API histories across `down`/`up`. The first verification runner mishandled a JSON array; I fixed it before accepting the result. All four containers changed, while the volume and data survived. See [container verification](docs/CONTAINERS.md).
+The assisted verification also found defects: malformed list JSON caused a blank screen until runtime response validation was added, and polling only open details left history stale. Those fixes have regression coverage. The full and focused runs have different scopes; [verification notes](docs/PROGRESS.md) keep their results separate. Browser/mobile and hosted-CI gaps are recorded rather than treated as passes.

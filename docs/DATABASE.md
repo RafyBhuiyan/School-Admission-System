@@ -1,6 +1,6 @@
 # Database model and migrations
 
-The database contains two domain tables. EF Core also maintains its own `__EFMigrationsHistory` metadata table.
+The database contains two domain tables. EF Core also maintains its own `__EFMigrationsHistory` metadata table. See [architecture and transaction flow](ARCHITECTURE.md) for how the API and worker use these tables.
 
 ```mermaid
 erDiagram
@@ -35,7 +35,7 @@ erDiagram
 | Status | Required `VARCHAR(16)`; enum conversion preserves `HELD`, `CONFIRMED`, `EXPIRED`, `CANCELLED`; a check rejects other stored values |
 | Created/updated timestamps | `TIMESTAMPTZ`; PostgreSQL `clock_timestamp()` supplies insert defaults |
 | Expiry timestamp | Required `TIMESTAMPTZ`; the hold service assigns it from database time captured after acquiring the class lock |
-| Confirmed/cancelled timestamps | Nullable `TIMESTAMPTZ`; lifecycle services will populate them on transition |
+| Confirmed/cancelled timestamps | Nullable `TIMESTAMPTZ`; lifecycle services populate them on transition |
 | Relationship | Required class foreign key; deleting a class with application history is restricted |
 
 The EF entities use UTC `DateTime` values. `updated_at` has an insert default, not an automatic update trigger; a future class-update operation must assign its update timestamp explicitly. There is no class-update endpoint. Historical expiry timestamps remain populated after terminal transitions.

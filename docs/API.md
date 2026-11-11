@@ -67,7 +67,7 @@ Example `201 Created` response:
 }
 ```
 
-The header is trimmed, required, and limited to 64 characters after trimming. Case and leading zeros are preserved. Synthetic IDs are accepted; only the future React input enforces 17 digits. Multiple header values are rejected. The response contains the five fields above.
+The header is trimmed, required, and limited to 64 characters after trimming. Case and leading zeros are preserved. Synthetic IDs are accepted; the React student form enforces 17 digits. Multiple header values are rejected. The response contains the five fields above.
 
 `HOLD_DURATION_SECONDS` defaults to 600 when unset. Invalid, nonpositive, or over-32-bit integer settings fail startup. Creation uses a read-committed transaction and a parameterized `SELECT ... FOR UPDATE` on the class row. After locking, it captures PostgreSQL `clock_timestamp()`, conditionally expires overdue `HELD` rows in that class, checks the student's existing active/confirmed application, counts occupied seats, and inserts only if capacity remains. Cleanup, the new hold, and the captured-time-plus-duration expiry commit together. EF Core handles the cleanup, checks, and insertion.
 

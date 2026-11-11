@@ -1,51 +1,58 @@
 # Backend tests
 
-This is an xUnit test project referencing `SchoolAdmission.Api`, not a second web application.
+xUnit tests for the real ASP.NET Core request pipeline, EF Core mappings and PostgreSQL transactions. The project references `SchoolAdmission.Api`; test-only probe controllers are registered only inside the test host.
 
-`Integration/FoundationTests.cs` contains 33 foundation test cases using `WebApplicationFactory` and the actual request pipeline, including invalid hold-duration and expiration settings. Test-only probe controllers are registered solely in the test host and are excluded from API documentation. No probe endpoints are included in the deployed API.
+## Run
 
-Coverage includes startup configuration errors, scoped PostgreSQL `AppDbContext` registration, allowed/disallowed CORS origins, automatic DTO and JSON validation, sanitized exceptions, fallback 404s, and development-only Swagger/OpenAPI.
-
-The foundation tests supply synthetic configuration and do not open a database connection. They run without PostgreSQL or production credentials.
-
-`Unit/ApiHealthProbeTests.cs` adds 24 configuration cases for listener/URL precedence, wildcard and IPv6 bindings, browser/internal address separation, explicit probe overrides with path prefixes, and invalid/missing settings. Together with the foundation cases, all 57 targeted tests passed after the probe configuration change.
-
-`Integration/DatabaseSchemaTests.cs` adds 11 schema cases against real PostgreSQL. `Integration/ClassApiTests.cs` adds 23 HTTP cases for class creation, list/details, exact response fields, validation, 400/404/409 errors, duplicate-name races, and mixed-status seat summaries.
-
-`Integration/SeatSummaryQueryTests.cs` adds 17 service/query cases: every status with past/future expiry, the exact expiry boundary at microsecond precision, full/over-capacity data, per-class counts with application history, and fresh wall-clock time inside an existing transaction. Every case compares list and detail results. Only the three exact-boundary cases replace the query's clock expression with a fixed parameter; the counts and comparisons still execute in PostgreSQL. The transaction regression uses the real clock and verifies that reads leave overdue rows stored as `HELD`.
-
-`Integration/HoldCreationTests.cs` adds 30 cases for the creation contract, configurable duration, header/body validation, duplicates/full classes, reapplication/history, cleanup scope, and rollback. The last-seat race uses two independent in-process API hosts sharing PostgreSQL. A separate test queues eight applications for one student. Both check database occupancy after completion. A lock-wait regression expires the old hold after the request transaction starts and verifies fresh-time cleanup and the new hold's lifetime. These tests observe blocked PostgreSQL sessions before releasing the class lock; polling has a 15-second timeout.
-
-`Integration/HoldRetrievalTests.cs` adds 16 cases covering all four statuses with past/future expiry, the exact expiry boundary, fresh database time inside an existing transaction, unchanged stored data, missing/malformed IDs, creation-to-retrieval flow, public access, and OpenAPI. Responses include database `serverTime`, omit the student identifier, and disable caching. Boundary cases share a test-only fixed-clock interceptor with the summary tests; live-clock cases do not use it.
-
-`Integration/HoldExpirationTests.cs` adds six cases for repeat/empty batches, overdue-only transitions, unchanged timestamps, oldest-first bounded processing, skipped locks/status changes, concurrent batches, and real hosted workers. Two hosts expire rows across cycles without HTTP requests. Most endpoint tests remove only the expiration hosted-service registration to keep seeded states deterministic; expiration tests enable it explicitly.
-
-`Integration/HoldConfirmationTests.cs` adds 28 cases covering confirmation, idempotent retries, historical confirmed expiry, ownership before mutation, validation, committed overdue expiry, exact boundaries, and OpenAPI. Eight requests queue on an observed row lock before returning the same success. Another case expires the hold while confirmation waits. A test-only interceptor pauses the real expiration service after it locks its selected row, then verifies the queued confirmation observes the worker's committed EXPIRED state. Boundary tests freeze only the database clock expression and check persisted results in a separate context.
-
-`Integration/HoldCancellationTests.cs` adds 26 cases covering 204 with no body, stable retries, history retention, released-seat reapplication by the same/different student, ownership/header validation, missing/malformed IDs, committed overdue expiry, microsecond boundaries, eight queued cancellations, and OpenAPI. Controlled row-lock tests exercise confirmation winning before cancellation, cancellation winning before confirmation, and expiration winning before cancellation. The competing operation must observe the committed terminal state and return 409.
-
-`Integration/StudentApplicationTests.cs` adds 19 cases covering all statuses, response fields/class names, history across classes, ordering, case/leading-zero-sensitive student filtering, empty lists, header validation, shared-clock expiry boundaries, and fresh time inside an existing transaction. Reads must leave stored state unchanged. An HTTP flow confirms one application and cancels another before listing both; OpenAPI must document all eight operations.
-
-`Integration/AdmissionWorkflowTests.cs` adds seven cross-endpoint cases: three identifier formats exercise all eight operations with the real worker enabled, one actual-duration case verifies worker-driven expiry without subsequent HTTP requests and successful reapplication, and three database-trigger cases reject inserts or lifecycle updates to verify atomic rollback, sanitized 500 responses, and successful retries. Fault tests disable the worker to keep rollback assertions deterministic; their triggers are installed only in fixture-owned databases and removed during cleanup.
-
-`Integration/CapacityConcurrencyTests.cs` adds two 100-request bursts against a class with capacity 10: an empty class and one already containing three active holds plus two confirmations. A shared start gate launches distinct-student HTTP requests, and the test observes at least 10 blocked database sessions before releasing the class lock. The host's pool is limited to 20 connections so the suite can run alongside other database fixtures. The tests require exactly the remaining capacity to succeed, all other responses to be 409 Problem Details, unique persisted students/hold IDs, and occupied capacity at most 10. API summaries must match the database. Actual metrics are extracted from the TRX report into [preserved output](../../docs/evidence/capacity-concurrency.txt).
-
-`Integration/BackendRestartTests.cs` adds two real-process cases. The helper starts the already-built API DLL with Kestrel on an ephemeral loopback port, stops only its owned process, and starts a new process against the same fixture database. Tests verify all four statuses and timestamp snapshots, class data, ownership, idempotent confirmation/cancellation, worker protection of terminal rows, and catch-up for a five-second hold that expires while the API is stopped. Polling the database verifies catch-up before any student HTTP request. The helper requires the source checkout and solution build output and passes connection settings through environment variables without logging them.
-
-Set `SCHEMA_TEST_CONNECTION_STRING` to a test-server account with `CREATE DATABASE` permission. Each test class gets a uniquely named database, applies the migration, and drops its own database afterward. API and query cases reset only that owned database between cases. Database-backed cases are explicitly skipped when the variable is absent. GitHub Actions provides a PostgreSQL 18 service and runs the full project, now 256 cases. The earlier full local run passed all 248 cases then present against a disposable PostgreSQL 18 instance, including four administrator-access cases. Integration clients explicitly supply synthetic administrator credentials; access tests remove or replace them to verify rejection. See [database verification](../../docs/DATABASE.md#real-postgresql-schema-checks) for setup and the [coverage matrix](../../docs/TESTING.md) for endpoint/error coverage.
-
-Current races cover allocation, confirmation/cancellation, and expiration contention. Restart and allocation tests use real API processes; broader load testing remains untested. Container startup and persistence evidence is recorded in the container guide.
-
-To rerun just the capacity bursts with aggregate metrics in a TRX report, configure the test connection and run:
+From the repository root, use a test-server account with `CREATE DATABASE` permission:
 
 ```powershell
-dotnet test SchoolAdmission.slnx --configuration Release --filter Category=PostgreSQLCapacityConcurrency --logger "trx;LogFileName=capacity.trx"
-```
-
-Run from the repository root:
-
-```powershell
+$env:SCHEMA_TEST_CONNECTION_STRING = "Host=localhost;Port=5432;Database=postgres;Username=schema_test;Password=replace-with-your-test-password"
 dotnet test SchoolAdmission.slnx --configuration Release
 ```
 
-`Integration/AdminApplicationsTests.cs` adds six cases for authorization, filter validation, pagination, class/status filtering, effective expiry and no-store responses. `Integration/MultiInstanceConcurrencyTests.cs` adds two capacity bursts across two separate API processes sharing PostgreSQL. Both processes must be observed waiting on database locks before the burst proceeds. Empty and partially occupied classes finish at capacity, with matching summaries and response-to-row checks. The latest focused run passed these eight cases plus four administrator-access and 23 class API cases (35 passed, zero skipped). See [multi-instance evidence](../../docs/evidence/multi-instance-concurrency.txt) and [reproduction command](../../docs/TESTING.md#allocation-across-two-api-processes). The complete expanded suite has not yet been rerun locally.
+Each fixture creates a uniquely named database, applies the migration and drops only its own database afterward. Without the connection variable, PostgreSQL cases are explicitly skipped. Foundation and health-probe tests run without a database. GitHub Actions supplies disposable PostgreSQL 18 and synthetic credentials.
+
+## Coverage
+
+Files below are in `Integration/` unless marked otherwise.
+
+| Test group | Cases | Main checks |
+| --- | ---: | --- |
+| `FoundationTests` | 33 | Configuration, DI, CORS, validation, safe errors, development Swagger |
+| `Unit/ApiHealthProbeTests` | 24 | Listener precedence, IPv6, overrides and internal/public URL separation |
+| `DatabaseSchemaTests` | 11 | Migration, types, constraints, indexes and rollback/reapply |
+| `ClassApiTests` | 23 | Creation/list/details, response fields, validation and duplicate races |
+| `SeatSummaryQueryTests` | 17 | Status counts, exact expiry, fresh database time and unchanged stored rows |
+| `HoldCreationTests` | 30 | Capacity, duplicates, headers, rollback, reapplication and lock waits |
+| `HoldRetrievalTests` | 16 | Effective expiry, public reads, server time and response shape |
+| `HoldExpirationTests` | 6 | Batches, skipped locks, contention and real hosted workers |
+| `HoldConfirmationTests` | 28 | Ownership, retries, expiry and competing lifecycle writes |
+| `HoldCancellationTests` | 26 | Empty 204, retries, ownership, released capacity and terminal states |
+| `StudentApplicationTests` | 19 | Student filtering, history, ordering and expiry |
+| `AdmissionWorkflowTests` | 7 | Full HTTP workflows, real-duration expiry and failed-write rollback |
+| `CapacityConcurrencyTests` | 2 | 100 requests for 10 seats, empty and partially occupied classes |
+| `BackendRestartTests` | 2 | Persisted history, stable retries and worker catch-up after downtime |
+| `AdminAccessTests` | 4 | Missing/wrong keys, server configuration and protected creation |
+| `AdminApplicationsTests` | 6 | Access, filters, pagination, effective expiry and no-store |
+| `MultiInstanceConcurrencyTests` | 2 | Two real API processes sharing capacity under contention |
+| **Total** | **256** | |
+
+## How the race checks work
+
+Requests wait behind a class/hold row lock. Tests observe blocked sessions in PostgreSQL before releasing it, then compare responses with persisted rows. This exercises actual lock contention rather than relying on task timing. The two-process allocation tests send 50 requests to each API and check both summaries against the same database.
+
+Restart and multi-instance tests launch the built API DLL on ephemeral loopback ports, with the real worker enabled. They need the source checkout, build output and installed .NET runtime. The helper drains process output and stops only processes it started.
+
+Exact-boundary cases replace only the database clock expression with a fixed input. Other lock-wait cases use the real PostgreSQL clock. Failure tests install rejecting triggers only in fixture-owned databases, verify rollback and sanitized errors, then remove the triggers.
+
+## Focused runs
+
+```powershell
+dotnet test SchoolAdmission.slnx --configuration Release --filter Category=PostgreSQLCapacityConcurrency --logger "trx;LogFileName=capacity.trx"
+dotnet test SchoolAdmission.slnx --configuration Release --filter Category=PostgreSQLMultiInstance --logger "trx;LogFileName=multi-instance.trx"
+```
+
+The earlier complete run passed **248 cases**, with zero skips. After adding register and multi-instance coverage, the latest focused run passed **35 cases**, with zero skips. The expanded 256-case suite has not been rerun in full locally.
+
+See [coverage and reproduction](../../docs/TESTING.md), [database account setup](../../docs/DATABASE.md#real-postgresql-schema-checks), and the recorded [single-host](../../docs/evidence/capacity-concurrency.txt) / [two-process](../../docs/evidence/multi-instance-concurrency.txt) output. These concurrency checks establish correctness under contention; broader load testing remains outstanding.

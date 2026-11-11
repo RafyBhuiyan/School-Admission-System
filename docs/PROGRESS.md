@@ -29,6 +29,8 @@ Compose startup and the complete class/application persistence cycle across `dow
 
 ## Verification
 
+Documentation now includes a task-oriented project README, shorter frontend/test guides, architecture and lifecycle diagrams, and the database ERD. Assumptions and AI usage are concise first-person notes with concrete design corrections. Local Markdown links, heading anchors, documented source paths and code fences were checked; this documentation change did not rerun application tests.
+
 The administrator panel and filters passed all 120 frontend tests, lint and the production build. The latest focused backend run passed all 35 cases with zero skips against disposable PostgreSQL 18: class API (23), administrator access (4), application register (6), and separate-process allocation (2). The earlier full run passed all 248 cases then present; the expanded 256-case suite has not been rerun in full. See [requirements review](REQUIREMENTS-REVIEW.md) for current coverage and remaining work. Older results below describe their original runs.
 
 Two real API processes on different ports shared one database and each received 50 concurrent requests. PostgreSQL blocking sessions confirmed contention from both processes before release. An empty 10-seat class produced 10 created holds and 90 conflicts; a class with three held and two confirmed seats produced five created holds and 95 conflicts. Persisted occupancy was 10 and both API summaries agreed in each case. The [recorded output](evidence/multi-instance-concurrency.txt) was extracted from the successful TRX report. The test owned and removed its processes and disposable database container; the user's Compose data was untouched.
