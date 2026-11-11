@@ -29,6 +29,8 @@ Compose startup and the complete class/application persistence cycle across `dow
 
 ## Verification
 
+The administrator controller now delegates register reads to `AdminApplicationService`, which owns validation, database time, effective expiry, filters and pagination. Typed response records retain the existing JSON contract. All 43 targeted administrator/foundation tests passed with zero skips against disposable PostgreSQL 18; the full-suite result below predates this refactor. The owner also confirmed browser-restart restoration and reported pushing the preceding revision.
+
 The final local audit passed all 256 backend cases with zero skips, all 133 frontend cases, lint with zero warnings, and the production build. English/Bangla switching uses fixed translations and a saved preference; isolated rendering tests cover the portal, admin sign-in and startup error in both languages. All 30 clean-source Compose persistence checks passed with synthetic administrator access on separate host ports. See the [audit](REPOSITORY-AUDIT.md) for contract, source/history and publication checks. Older entries below describe their original runs.
 
 Documentation now includes a task-oriented project README, shorter frontend/test guides, architecture and lifecycle diagrams, and the database ERD. Assumptions and AI usage are concise first-person notes with concrete design corrections. Local Markdown links, heading anchors, documented source paths and code fences were checked; this documentation change did not rerun application tests.

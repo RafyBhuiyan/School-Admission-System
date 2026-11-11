@@ -40,6 +40,7 @@ builder.Services.AddOptions<DatabaseOptions>()
 builder.Services.AddDbContext<AppDbContext>((services, options) =>
     options.UseNpgsql(services.GetRequiredService<IOptions<DatabaseOptions>>().Value.DefaultConnection));
 builder.Services.AddScoped<ClassService>();
+builder.Services.AddScoped<AdminApplicationService>();
 builder.Services.AddScoped<HoldService>();
 builder.Services.AddOptions<ExpirationOptions>()
     .BindConfiguration("Expiration")

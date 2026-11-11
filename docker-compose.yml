@@ -1,7 +1,8 @@
 name: school-admission
 
 x-database-environment: &database-environment
-  ConnectionStrings__DefaultConnection: "Host=postgres;Database=${POSTGRES_DB:-school_admission};Username=${POSTGRES_USER:-school_admission}"
+  # This local PostgreSQL service uses passwords, not Kerberos/GSSAPI.
+  ConnectionStrings__DefaultConnection: "Host=postgres;Database=${POSTGRES_DB:-school_admission};Username=${POSTGRES_USER:-school_admission};GSS Encryption Mode=Disable"
   PGPASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env or the environment}"
 
 services:

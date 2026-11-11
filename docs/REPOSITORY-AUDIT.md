@@ -1,10 +1,11 @@
 # Repository audit
 
-Local checks completed on 11 November 2026. The repository owner will handle committing, pushing and GitHub visibility. Public access is still pending verification.
+Local checks completed on 11 November 2026. The owner subsequently confirmed that a full browser restart restores the student correctly and reported pushing the reviewed changes. The owner is handling GitHub publication; public access has not been independently reverified.
 
 | Check | Result and evidence |
 | --- | --- |
 | Required files | Root Compose file, env example, ignore rules, solution, frontend, README, assumptions and AI notes are present |
+| Controller/service separation | Administrator queries, validation, expiry calculation and pagination moved to `AdminApplicationService`; 43 targeted backend tests passed with zero skips, including exact response-field and timestamp checks |
 | API contract | All 256 backend tests passed with zero skips, including path/method/header, response fields, validation, ownership and lifecycle checks |
 | Frontend | 133 tests passed; production build passed; lint reported zero warnings/errors |
 | Languages | Fixed English/Bangla dictionary, one header button, saved preference, localized dates/counts, unchanged identifiers; unit and real-component rendering checks passed |
@@ -24,6 +25,6 @@ The preserved backend TRX is local and ignored: `Backend/SchoolAdmission.Tests/T
 
 The eight required API operations retain their routes and JSON names; [API documentation](API.md) lists the payloads. Admin class creation now requires the private shared key, following the revised user requirement. The extra administrator session/register operations do not replace the student contract.
 
-The source scan checks known secret values and common key patterns; it is not a guarantee against every possible secret format. Existing screenshots document synthetic demo workflows. Current language behavior is covered by isolated rendering tests; direct visual inspection, mobile viewport checks, full browser-process restart and hosted CI remain unverified. Automatic approval review rejected inspecting an unrelated browser tab because it could expose private content.
+The source scan checks known secret values and common key patterns; it is not a guarantee against every possible secret format. Existing screenshots document synthetic demo workflows. Current language behavior is covered by isolated rendering tests; direct visual inspection, mobile viewport checks and hosted CI remain unverified by the agent. Full browser-process restart was subsequently confirmed by the owner. Automatic approval review rejected inspecting an unrelated browser tab because it could expose private content.
 
-Before submission, the owner needs to commit/push these changes, confirm the repository opens without signing in, and inspect the hosted CI results. Nothing was committed, pushed or submitted during this audit.
+The owner reported pushing the audited revision. The later administrator-service refactor is a new local change to review and commit. The agent has not committed, pushed or submitted anything. A push alone does not establish a fresh-checkout run; the preserved Compose evidence remains a clean-source export.
