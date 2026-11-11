@@ -4,6 +4,12 @@ Base URL: `http://localhost:8080`. Apply the initial migration to the configured
 
 Class creation requires `X-Admin-Key`, matching the private server setting `Admin__AccessKey` (at least 32 characters). Missing/incorrect keys return 401; missing/invalid server configuration returns 503 and disables creation. `GET /admin/session` validates that credential and returns 204 with `Cache-Control: no-store`. Class listing/details remain public. Hold creation requires the student identifier header; it is not authentication. CORS permits `X-Admin-Key` only from the configured origins. Never put this key in public `config.json` or browser storage.
 
+## Administrator application register
+
+`GET /admin/applications` requires `X-Admin-Key`. It returns `{ items, total, page, pageSize }`; each item contains `holdId`, `classId`, `className`, `studentId`, `status`, `createdAt`, and `expiresAt`. Responses disable caching. Student identifiers are never query parameters.
+
+Optional filters are `classId` (UUID), `status` (`HELD`, `CONFIRMED`, `EXPIRED`, `CANCELLED`), `page` (1–100000, default 1), and `pageSize` (1–100, default 25). Invalid values return 400; missing/incorrect admin credentials return 401. Results are ordered newest first, then by hold ID. Overdue HELD rows appear as EXPIRED and match that filter before the worker updates their stored status. One database clock value is captured for the count and page queries; concurrent changes can still occur between those reads.
+
 ## Create a class
 
 `POST /classes` with `Content-Type: application/json`:

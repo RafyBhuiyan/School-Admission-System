@@ -1,0 +1,21 @@
+PostgreSQL 18; local verification on 11 November 2026.
+Extracted from multi-instance-admin.trx (focused run: 35 passed, 0 failed, 0 skipped).
+
+SchoolAdmission.Tests.Integration.MultiInstanceConcurrencyTests.SeparateProcessesShareCapacity(initiallyHeld: 0, initiallyConfirmed: 0)
+Outcome: Passed
+Distinct OS processes: 2; distinct listening ports: 2; shared database: 1; contending instances observed: 2
+Requests=100 (50 per instance); Capacity=10; InitiallyHeld=0; InitiallyConfirmed=0
+HTTP 201=10; HTTP 409=90; Other=0; persisted occupancy=10; distinct students=10; available=0
+Instance 1: HTTP 201=9; HTTP 409=41
+Instance 2: HTTP 201=1; HTTP 409=49
+Both API summaries agree; response IDs/expiries match database rows; capacity invariant PASS.
+
+SchoolAdmission.Tests.Integration.MultiInstanceConcurrencyTests.SeparateProcessesShareCapacity(initiallyHeld: 3, initiallyConfirmed: 2)
+Outcome: Passed
+Distinct OS processes: 2; distinct listening ports: 2; shared database: 1; contending instances observed: 2
+Requests=100 (50 per instance); Capacity=10; InitiallyHeld=3; InitiallyConfirmed=2
+HTTP 201=5; HTTP 409=95; Other=0; persisted occupancy=10; distinct students=10; available=0
+Instance 1: HTTP 201=3; HTTP 409=47
+Instance 2: HTTP 201=2; HTTP 409=48
+Both API summaries agree; response IDs/expiries match database rows; capacity invariant PASS.
+

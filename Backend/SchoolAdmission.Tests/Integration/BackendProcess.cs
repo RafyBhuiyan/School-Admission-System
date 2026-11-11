@@ -8,6 +8,7 @@ namespace SchoolAdmission.Tests.Integration;
 internal sealed class BackendProcess(Process process, HttpClient client) : IAsyncDisposable
 {
     public HttpClient Client { get; } = client;
+    public int ProcessId => process.Id;
 
     public static async Task<BackendProcess> StartAsync(string connectionString, int durationSeconds = 600)
     {

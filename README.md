@@ -40,7 +40,7 @@ npm run dev
 
 Open `http://localhost:5173` and enter a 17-digit birth registration number. The browser remembers the student and automatically loads their applications on return. History includes held, confirmed, expired, and cancelled applications; it refreshes every 2.5 seconds while a hold remains. Use Change student or Forget this device when appropriate. Edit `Frontend/public/config.json` to set the browser-reachable `API_BASE_URL` (default `http://localhost:8080`); see [frontend setup](Frontend/README.md).
 
-Open Administrator and enter the private `Admin__AccessKey` from `.env` to create classes. The key stays in browser memory until sign-out or reload; it is never included in public configuration. Class creation is disabled if the server key is missing or shorter than 32 characters. Local .NET execution also needs `Admin__AccessKey` exported. Seat counts refresh quietly every four seconds while the page is visible. Applying opens application details with a server-synchronized countdown. Confirm simulates payment; Cancel releases the seat. Status changes refresh availability and history, and the backend verifies expiry when the timer reaches zero.
+Click **Admin** and enter the private `Admin__AccessKey` from `.env` as the admin code. The panel provides class creation and a paginated application register with class/status filters. Admission classes can be searched by name/shift and filtered by available seats. The key stays in browser memory until the admin panel is closed or the page reloads; it is never included in public configuration. Class creation is disabled if the server key is missing or shorter than 32 characters. Local .NET execution also needs `Admin__AccessKey` exported. Seat counts refresh quietly every four seconds while the page is visible. Applying opens application details with a server-synchronized countdown. Confirm simulates payment; Cancel releases the seat. Status changes refresh availability and history, and the backend verifies expiry when the timer reaches zero.
 
 ## Container images
 
@@ -106,7 +106,7 @@ dotnet test SchoolAdmission.slnx --configuration Release
 
 Tests create and remove their own databases. Without this variable, database tests are skipped. Coverage includes API workflows, validation, migrations, expiry, failed-write rollback, backend-process restarts, and competing requests for the last seat. See the [integration coverage matrix](docs/TESTING.md).
 
-On PostgreSQL 18, **100 concurrent requests for 10 seats produced 10 created holds and 90 conflicts**. With three held seats and two confirmations already present, the same burst produced five holds and 95 conflicts. Persisted occupancy was exactly 10 in both cases. This uses one in-process API host with a 20-connection database pool; [actual test output](docs/evidence/capacity-concurrency.txt) is preserved.
+On PostgreSQL 18, **100 concurrent requests for 10 seats produced 10 created holds and 90 conflicts**. With three held seats and two confirmations already present, the same burst produced five holds and 95 conflicts. Persisted occupancy was exactly 10 in both cases. These results passed with both [one in-process host](docs/evidence/capacity-concurrency.txt) and [two separate API processes sharing PostgreSQL](docs/evidence/multi-instance-concurrency.txt), with 50 requests sent to each process.
 
 Frontend checks run from `Frontend`: `npm test`, `npm run lint`, and `npm run build`.
 

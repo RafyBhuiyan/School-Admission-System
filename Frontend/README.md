@@ -57,7 +57,7 @@ Class cards show total, held, confirmed, and available seats. The catalog refres
 
 Apply requires a selected student and available capacity. Existing active/confirmed applications disable reapplication; the backend remains authoritative. Duplicate clicks are blocked while a write is pending. Successful creation refreshes classes; successful Apply refreshes both classes and the selected student's history. A 409 also triggers fresh reads. Changing students aborts an in-flight Apply and suppresses its late response. Mutations are never retried automatically.
 
-Open Administrator and enter the private `Admin__AccessKey` configured on the backend to create classes. The API verifies `X-Admin-Key` on every creation request. The credential stays in memory until sign-out or page reload and must never be included in public runtime configuration or browser storage. This local-demo shared key does not provide individual administrator accounts.
+Click Admin and enter the private `Admin__AccessKey` as the admin code. After verification, the panel shows class creation and applications with class/status filters and pagination. The public catalog supports name/shift search and availability filters. The API verifies `X-Admin-Key` on every creation request. The credential stays in memory until the panel closes or the page reloads and must never be included in public runtime configuration or browser storage. This local-demo shared key does not provide individual administrator accounts.
 
 ## Application details
 
