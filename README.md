@@ -14,7 +14,7 @@ docker compose up --build --wait --wait-timeout 120
 
 Open the portal at `http://localhost:5173`; the API is at `http://localhost:8080`. Startup waits for PostgreSQL, runs the migration bundle once, waits for API readiness, then starts the frontend. The `migrator` service finishing with exit code 0 is expected.
 
-Use `docker compose down` to stop the stack while retaining the named database volume. Compose recreation persistence still awaits its dedicated verification. See [container configuration and verification](docs/CONTAINERS.md) for settings, health checks, and troubleshooting.
+Use `docker compose down` to stop the stack while retaining the named database volume. Class and application data survived a verified full container recreation. See [container configuration and verification](docs/CONTAINERS.md) for settings, health checks, and the repeatable persistence check.
 
 ## Run locally for development
 
@@ -112,4 +112,4 @@ Frontend checks run from `Frontend`: `npm test`, `npm run lint`, and `npm run bu
 
 Browser workflow, expiry, polling, continuity, and error-recovery results are recorded in [UI verification](docs/UI-VERIFICATION.md).
 
-GitHub Actions runs backend checks and frontend tests/lint/build on pushes and pull requests. Further details: [test coverage](Backend/SchoolAdmission.Tests/README.md), [database setup](docs/DATABASE.md), [CI](docs/CI.md), [implementation status](docs/PROGRESS.md), and [AI usage](AI_USAGE.md).
+GitHub Actions runs backend checks, frontend tests/lint/build, and Compose startup/persistence checks on pushes and pull requests. Further details: [test coverage](Backend/SchoolAdmission.Tests/README.md), [database setup](docs/DATABASE.md), [CI](docs/CI.md), [implementation status](docs/PROGRESS.md), and [AI usage](AI_USAGE.md).
